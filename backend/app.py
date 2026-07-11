@@ -116,6 +116,70 @@ def deactivate_player(player_id: int):
     return {"ok": True}
 
 
+class EventIn(BaseModel):
+    player: int
+    media_type: str
+    item_key: str
+    title: str
+    year: int | None = None
+    action: str
+
+
+@app.post("/api/event")
+def post_event(body: EventIn):
+    if body.action not in ("spun", "watched", "seen"):
+        raise HTTPException(422, "action_not_allowed")
+    if body.media_type not in ("movie", "tv"):
+        raise HTTPException(422, "bad_media_type")
+    conn = db.get_conn()
+    db.log_event(conn, body.player, body.media_type, body.item_key,
+                 body.title, body.year, body.action)
+    conn.close()
+    return {"ok": True}
+
+
+class VetoIn(BaseModel):
+    player: int
+    media_type: str
+    item_key: str
+    title: str
+    year: int | None = None
+
+
+@app.post("/api/veto")
+def post_veto(body: VetoIn):
+    tokens = int(config.resolve("veto_tokens") or 1)
+    tz = config.resolve("tz") or "UTC"
+    conn = db.get_conn()
+    used = db.vetoes_used_today(conn, body.player, tz)
+    if used >= tokens:
+        conn.close()
+        raise HTTPException(409, "no_tokens")
+    db.log_event(conn, body.player, body.media_type, body.item_key,
+                 body.title, body.year, "vetoed")
+    conn.close()
+    return {"ok": True, "remaining": tokens - used - 1}
+
+
+class ResetSeenIn(BaseModel):
+    stream: str | None = None
+
+
+@app.post("/api/reset-seen", dependencies=[Depends(require_admin)])
+def reset_seen(body: ResetSeenIn):
+    conn = db.get_conn()
+    if body.stream:
+        cur = conn.execute(
+            "DELETE FROM events WHERE action='seen' AND media_type=?",
+            (body.stream,))
+    else:
+        cur = conn.execute("DELETE FROM events WHERE action='seen'")
+    conn.commit()
+    deleted = cur.rowcount
+    conn.close()
+    return {"ok": True, "deleted": deleted}
+
+
 static_dir = os.environ.get("STATIC_DIR", "static")
 if os.path.isdir(static_dir):
     app.mount(os.environ.get("URL_BASE", "") or "/",

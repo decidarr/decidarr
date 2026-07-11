@@ -105,17 +105,18 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def log_event(conn, player, media_type, item_key, title, year, action):
-    ts = utc_now()
+def log_event(conn, player, media_type, item_key, title, year, action,
+              source="user", ts=None):
+    ts = ts or utc_now()
     conn.execute(
-        "INSERT INTO events(ts,player,media_type,item_key,title,year,action)"
-        " VALUES (?,?,?,?,?,?,?)",
-        (ts, player, media_type, item_key, title, year, action))
+        "INSERT INTO events(ts,player,media_type,item_key,title,year,action,source)"
+        " VALUES (?,?,?,?,?,?,?,?)",
+        (ts, player, media_type, item_key, title, year, action, source))
     if action == "watched":
         conn.execute(
-            "INSERT INTO events(ts,player,media_type,item_key,title,year,action)"
-            " VALUES (?,?,?,?,?,?,'seen')",
-            (ts, player, media_type, item_key, title, year))
+            "INSERT INTO events(ts,player,media_type,item_key,title,year,action,source)"
+            " VALUES (?,?,?,?,?,?,'seen',?)",
+            (ts, player, media_type, item_key, title, year, source))
         conn.execute(
             "DELETE FROM current_picks WHERE media_type=? AND item_key=?",
             (media_type, item_key))
@@ -132,7 +133,7 @@ def seen_keys(conn, media_type):
 def history(conn, limit=50):
     rows = conn.execute(
         "SELECT e.ts, e.player, p.name AS player_name, e.media_type,"
-        "       e.item_key, e.title, e.year, e.action"
+        "       e.item_key, e.title, e.year, e.action, e.source"
         " FROM events e JOIN players p ON p.id = e.player"
         " WHERE e.action IN ('watched','requested')"
         " ORDER BY e.id DESC LIMIT ?", (limit,))

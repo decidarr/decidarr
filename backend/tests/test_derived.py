@@ -85,3 +85,36 @@ def test_stats_counts_duel_won_per_stream_and_combined(db_file):
     assert s["combined"]["Tim"]["duel_won"] == 2
     assert s["movie"]["Tim"]["duel_won"] == 1
     conn.close()
+
+def test_log_event_auto_source_and_ts_override(db_file):
+    conn = db.get_conn(db_file)
+    _seed_players(conn)
+    db.log_event(conn, 1, "movie", "tmdb:603", "The Matrix", 1999, "watched",
+                 source="auto", ts="2026-07-12T08:00:00Z")
+    rows = conn.execute(
+        "SELECT action, source, ts FROM events ORDER BY id").fetchall()
+    # watched + companion seen, both auto, both at the server's played_at
+    assert [(r["action"], r["source"], r["ts"]) for r in rows] == [
+        ("watched", "auto", "2026-07-12T08:00:00Z"),
+        ("seen", "auto", "2026-07-12T08:00:00Z"),
+    ]
+    conn.close()
+
+
+def test_log_event_defaults_unchanged(db_file):
+    conn = db.get_conn(db_file)
+    _seed_players(conn)
+    db.log_event(conn, 1, "movie", "tmdb:603", "The Matrix", 1999, "spun")
+    r = conn.execute("SELECT source, ts FROM events").fetchone()
+    assert r["source"] == "user" and r["ts"]  # ts auto-filled
+    conn.close()
+
+
+def test_history_exposes_source(db_file):
+    conn = db.get_conn(db_file)
+    _seed_players(conn)
+    db.log_event(conn, 1, "movie", "tmdb:603", "The Matrix", 1999, "watched",
+                 source="auto", ts="2026-07-12T08:00:00Z")
+    h = db.history(conn)
+    assert h[0]["source"] == "auto"
+    conn.close()

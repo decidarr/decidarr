@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <!-- Decidarr og-image: 1200x630 social embed card -->
+  <rect x="0" y="0" width="1200" height="630" fill="#10141a"/>
+  <!-- subtle rim glow ring, off-canvas flavor -->
+  <circle cx="1050" cy="580" r="380" fill="none" stroke="#1a212b" stroke-width="60"/>
+  <circle cx="1050" cy="580" r="380" fill="none" stroke="#d4a943" stroke-width="60"
+          stroke-dasharray="149.2 149.2" opacity="0.22"/>
+  <!-- mark -->
+  <g transform="translate(96,155) scale(0.625)">
+    <circle cx="256" cy="256" r="248" fill="#10141a"/>
+    <circle cx="256" cy="256" r="244" fill="none" stroke="#2a3442" stroke-width="4"/>
+    <circle cx="256" cy="266" r="186" fill="#1a212b" stroke="#d4a943" stroke-width="14"/>
+    <g fill="#10141a" stroke="#2f3a49" stroke-width="4">
+      <circle cx="256" cy="152" r="44"/>
+      <circle cx="355" cy="209" r="44"/>
+      <circle cx="355" cy="323" r="44"/>
+      <circle cx="256" cy="380" r="44"/>
+      <circle cx="157" cy="323" r="44"/>
+      <circle cx="157" cy="209" r="44"/>
+    </g>
+    <circle cx="355" cy="209" r="30" fill="#3fae6a"/>
+    <circle cx="256" cy="266" r="40" fill="#d4a943"/>
+    <circle cx="256" cy="266" r="14" fill="#10141a"/>
+    <path d="M 230 10 L 282 10 L 256 62 Z" fill="#d4a943"/>
+  </g>
+  <!-- wordmark -->
+  <text x="470" y="300" font-family="'DejaVu Sans Mono','JetBrains Mono',monospace"
+        font-size="92" font-weight="bold" letter-spacing="4" fill="#e8e0cc">DECID<tspan fill="#d4a943">ARR</tspan></text>
+  <text x="474" y="360" font-family="'DejaVu Sans Mono','JetBrains Mono',monospace"
+        font-size="26" letter-spacing="5" fill="#7d8899">THE WATCH-NIGHT DECISION ENGINE</text>
+  <text x="474" y="428" font-family="'DejaVu Sans Mono','JetBrains Mono',monospace"
+        font-size="24" letter-spacing="2" fill="#3fae6a">spin · veto · duel · summon</text>
+</svg>

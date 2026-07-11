@@ -1,17 +1,27 @@
-# Decidarr
+<p align="center"><img src="assets/lockup.png" alt="Decidarr" width="640"/></p>
 
-The watch-night decision engine for the *arr stack.
+**The watch-night decision engine for the \*arr stack.**
 
-Decidarr runs two independent streams — **Movies** and **TV** — each with
-its own curated pool and its own wheel. Spin it, and the pick is
-availability-checked live against your media server; if you don't have it,
-one tap summons it through Overseerr/Jellyseerr with a live download
-progress bar (fed by Radarr's or Sonarr's queue). Veto tokens, head-to-head
-duels, blind picks, a grudge list, and a scoreboard turn choosing into a
-game instead of an argument.
+You have Radarr, a Plex library, and a watchlist a mile long — and you still
+spend twenty minutes arguing about what to watch. Decidarr turns the decision
+into a game: spin a wheel over a curated pool, and if tonight's pick isn't in
+your library yet, one tap summons it through Overseerr/Jellyseerr and
+Radarr/Sonarr, with a live download progress bar until it lands.
 
-Self-hosted, single Docker container, mobile-first PWA (installable to
-your phone's home screen).
+Decidarr runs two independent streams — **Movies** and **TV** — each with its
+own curated pool and its own wheel. Veto tokens, head-to-head duels, blind
+picks, a grudge list, and a scoreboard turn choosing into a game instead of an
+argument. Self-hosted, single Docker container, mobile-first PWA (installable
+to your phone's home screen).
+
+Decidarr is the public evolution of Swamp Roulette, a private two-player picker
+already running happily in production.
+
+## What makes it different
+
+Existing pickers choose from what your media server already has. Decidarr
+treats the whole \*arr stack as its backend: it can land on a title you don't
+own yet and fetch it on the spot.
 
 ## Quick start
 

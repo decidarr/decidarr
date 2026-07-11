@@ -7,6 +7,10 @@ from pydantic import BaseModel
 
 import config
 import db
+import radarr
+import seerr
+import sonarr
+from media import get_backend
 
 VERSION = "1.0.0"
 
@@ -218,6 +222,112 @@ def duel_win(body: DuelWinIn):
                  body.title, body.year, "duel_won")
     conn.close()
     return {"ok": True}
+
+
+async def _seerr_status(item_key, media_type, title, year):
+    if not seerr.configured():
+        return {"verdict": "unknown", "tmdb_id": None, "tvdb_id": None,
+                "confidence": "none"}
+    async with seerr.make_client() as c:
+        if item_key.startswith("tmdb:"):
+            return await seerr.status_direct(c, int(item_key[5:]), media_type)
+        return await seerr.status_by_title(c, title, year, media_type)
+
+
+async def _media_overlay(media_type, title, year, tmdb_id):
+    backend = get_backend()
+    if not backend or not backend.configured():
+        return None
+    async with backend.make_client() as c:
+        verdict, conf, native_id = await backend.availability(
+            c, {"tmdb_id": tmdb_id, "title": title, "year": year}, media_type)
+    return {"verdict": verdict, "confidence": conf,
+            "deep_link": backend.deep_link(native_id) if native_id else None}
+
+
+@app.get("/api/status")
+async def status(item_key: str, type: str, title: str, year: int | None = None):
+    if type not in ("movie", "tv"):
+        raise HTTPException(422, "bad_media_type")
+    s = await _seerr_status(item_key, type, title, year)
+    tmdb_id = s.get("tmdb_id") or (
+        int(item_key[5:]) if item_key.startswith("tmdb:") else None)
+    overlay = await _media_overlay(type, title, year, tmdb_id)
+    if overlay and overlay["verdict"] == "available":
+        return {"verdict": "available", "deep_link": overlay["deep_link"],
+                "confidence": overlay["confidence"]}
+    return {"verdict": s["verdict"], "deep_link": None,
+            "confidence": s["confidence"]}
+
+
+class WatchIn(BaseModel):
+    player: int
+    media_type: str
+    item_key: str
+    title: str
+    year: int | None = None
+    tmdb_id: int | None = None
+    replace: bool = False
+
+
+@app.post("/api/watch")
+async def watch(body: WatchIn):
+    if body.media_type not in ("movie", "tv"):
+        raise HTTPException(422, "bad_media_type")
+    if not seerr.configured():
+        raise HTTPException(503, "seerr_unconfigured")
+    s = await _seerr_status(body.item_key, body.media_type, body.title, body.year)
+    tmdb_id = body.tmdb_id or s.get("tmdb_id")
+    tvdb_id = s.get("tvdb_id")
+    conn = db.get_conn()
+    if s["verdict"] == "available":
+        try:
+            db.upsert_pick(conn, body.media_type, body.item_key, body.title,
+                           body.year, tmdb_id, tvdb_id, body.player, body.replace)
+        except db.PendingPickError:
+            conn.close()
+            raise HTTPException(409, "pending_pick")
+        conn.close()
+        overlay = await _media_overlay(body.media_type, body.title, body.year,
+                                       tmdb_id)
+        return {"verdict": "available",
+                "deep_link": overlay["deep_link"] if overlay else None}
+    # not available -> request it (pick committed only if request succeeds,
+    # but the 409 check must come FIRST so we never request then discard)
+    row = conn.execute("SELECT item_key FROM current_picks WHERE media_type=?",
+                       (body.media_type,)).fetchone()
+    if row and row["item_key"] != body.item_key and not body.replace:
+        conn.close()
+        raise HTTPException(409, "pending_pick")
+    seasons = config.resolve("tv_request_seasons") or "first"
+    async with seerr.make_client() as c:
+        result = await seerr.request(c, tmdb_id, body.media_type, seasons)
+    if not result["ok"]:
+        conn.close()
+        raise HTTPException(502, "request_failed")
+    db.upsert_pick(conn, body.media_type, body.item_key, body.title, body.year,
+                   result["tmdb_id"], result["tvdb_id"], body.player, True)
+    db.log_event(conn, body.player, body.media_type, body.item_key,
+                 body.title, body.year, "requested")
+    conn.close()
+    return {"verdict": "pending", "requested": True}
+
+
+@app.get("/api/progress")
+async def progress(type: str, tmdb: int | None = None, tvdb: int | None = None,
+                   title: str | None = None, year: int | None = None):
+    if type not in ("movie", "tv"):
+        raise HTTPException(422, "bad_media_type")
+    base = {"state": "unconfigured", "percent": 0, "eta": None, "title": None}
+    if type == "movie":
+        if not radarr.configured() or tmdb is None:
+            return base
+        async with radarr.make_client() as c:
+            return await radarr.progress(c, tmdb)
+    if not sonarr.configured():
+        return {**base, "landed": None}
+    async with sonarr.make_client() as c:
+        return await sonarr.progress(c, tvdb, title, year)
 
 
 static_dir = os.environ.get("STATIC_DIR", "static")

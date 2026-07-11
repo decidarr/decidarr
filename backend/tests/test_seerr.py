@@ -68,3 +68,19 @@ def test_connection_error_never_raises():
     assert r["verdict"] == "unknown"
     r2 = asyncio.run(seerr.request(_client(handler), 603, "movie", "first"))
     assert r2["ok"] is False
+
+def test_status_by_title_connection_error_never_raises():
+    def handler(req):
+        raise httpx.ConnectError("boom")
+    r = asyncio.run(seerr.status_by_title(_client(handler), "The Thing", 1982, "movie"))
+    assert r["verdict"] == "unknown"
+
+def test_malformed_json_body_degrades_all_three():
+    def handler(req):
+        return httpx.Response(200, content=b"<html>Bad Gateway</html>")
+    sd = asyncio.run(seerr.status_direct(_client(handler), 603, "movie"))
+    assert sd["verdict"] == "unknown"
+    sbt = asyncio.run(seerr.status_by_title(_client(handler), "The Thing", 1982, "movie"))
+    assert sbt["verdict"] == "unknown"
+    rq = asyncio.run(seerr.request(_client(handler), 1396, "tv", "first"))
+    assert rq["ok"] is False

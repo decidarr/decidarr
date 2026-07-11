@@ -36,7 +36,7 @@ async def status_direct(client, tmdb_id, media_type):
         r = await client.get(path)
         r.raise_for_status()
         data = r.json()
-    except httpx.HTTPError:
+    except (httpx.HTTPError, ValueError):
         return {"verdict": "unknown", "tmdb_id": tmdb_id, "tvdb_id": None,
                 "confidence": "exact"}
     info = data.get("mediaInfo") or {}
@@ -50,7 +50,7 @@ async def status_by_title(client, title, year, media_type):
         r = await client.get("/api/v1/search", params={"query": title})
         r.raise_for_status()
         results = r.json().get("results", [])
-    except httpx.HTTPError:
+    except (httpx.HTTPError, ValueError):
         return {"verdict": "unknown", "tmdb_id": None, "tvdb_id": None,
                 "confidence": "none"}
     cands = [{"title": x.get("title") or x.get("name"), "year": _year(x),
@@ -75,7 +75,7 @@ async def request(client, tmdb_id, media_type, seasons):
         r = await client.post("/api/v1/request", json=body)
         r.raise_for_status()
         media = r.json().get("media") or {}
-    except httpx.HTTPError:
+    except (httpx.HTTPError, ValueError):
         return {"ok": False, "tmdb_id": tmdb_id, "tvdb_id": None}
     return {"ok": True, "tmdb_id": media.get("tmdbId", tmdb_id),
             "tvdb_id": media.get("tvdbId")}

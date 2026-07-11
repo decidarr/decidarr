@@ -4,6 +4,8 @@
 **/__pycache__
 **/*.pyc
 **/.pytest_cache
+**/tests
+**/requirements-dev.txt
 **/.DS_Store
 **/*.tsbuildinfo
 .git

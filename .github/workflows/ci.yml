@@ -16,7 +16,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install dependencies
-        run: cd backend && pip install -r requirements.txt
+        run: cd backend && pip install -r requirements-dev.txt
       - name: Run tests
         run: cd backend && python -m pytest tests -q
 

@@ -173,7 +173,12 @@ export function AutologSection() {
         {hasServer ? S.settings.autolog.caption : S.settings.autolog.needsServer}
       </p>
       <label className="toggle-row">
-        <input type="checkbox" checked={on} disabled={!hasServer} onChange={toggle} />
+        <input
+          type="checkbox"
+          checked={on}
+          disabled={!hasServer || !!connectionsQuery.data?.autolog_enabled?.env}
+          onChange={toggle}
+        />
         {S.settings.autolog.title}
       </label>
     </section>

@@ -37,7 +37,7 @@ async def _daily_refresh():
 async def _autolog_loop():
     while True:
         # Re-read each cycle so a settings change applies without restart.
-        interval = int(config.resolve("autolog_interval") or autolog.DEFAULT_INTERVAL)
+        interval = autolog.resolve_interval()
         await asyncio.sleep(interval)
         try:
             await autolog.poll_once()

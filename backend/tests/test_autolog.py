@@ -209,3 +209,17 @@ def test_enabled_truthiness(db_file, monkeypatch, val, expected):
     if val is not None:
         config.set_setting("autolog_enabled", val)
     assert autolog.enabled() is expected
+
+
+def test_resolve_interval_valid_and_default(db_file, monkeypatch):
+    monkeypatch.delenv("AUTOLOG_INTERVAL", raising=False)
+    assert autolog.resolve_interval() == autolog.DEFAULT_INTERVAL   # absent -> default
+    config.set_setting("autolog_interval", "120")
+    assert autolog.resolve_interval() == 120
+
+
+def test_resolve_interval_rejects_bad_values(db_file, monkeypatch):
+    monkeypatch.delenv("AUTOLOG_INTERVAL", raising=False)
+    for bad in ("300s", "", "abc", "0", "-5"):
+        config.set_setting("autolog_interval", bad)
+        assert autolog.resolve_interval() == autolog.DEFAULT_INTERVAL, bad

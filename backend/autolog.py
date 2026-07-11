@@ -26,6 +26,17 @@ def enabled() -> bool:
     return v is None or v.strip().lower() not in _OFF
 
 
+def resolve_interval() -> int:
+    """Poll cadence in seconds from the autolog_interval setting, guarded:
+    a non-numeric or non-positive value falls back to DEFAULT_INTERVAL so a
+    bad admin value can neither kill the poller nor tight-loop the server."""
+    try:
+        interval = int(config.resolve("autolog_interval") or DEFAULT_INTERVAL)
+    except (TypeError, ValueError):
+        return DEFAULT_INTERVAL
+    return interval if interval > 0 else DEFAULT_INTERVAL
+
+
 def _since(watermark: str) -> str:
     dt = datetime.strptime(watermark, ISO).replace(tzinfo=timezone.utc)
     return (dt - timedelta(seconds=OVERLAP_S)).strftime(ISO)

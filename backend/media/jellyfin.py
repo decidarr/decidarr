@@ -9,8 +9,11 @@ def configured() -> bool:
 
 
 def make_client() -> httpx.AsyncClient:
+    url = config.resolve("jellyfin_url")
+    if not url:
+        raise RuntimeError("Not configured — set a URL first")
     return httpx.AsyncClient(
-        base_url=config.resolve("jellyfin_url").rstrip("/"),
+        base_url=url.rstrip("/"),
         headers={"X-Emby-Token": config.resolve("jellyfin_api_key")},
         timeout=10)
 

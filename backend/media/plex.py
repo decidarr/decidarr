@@ -9,8 +9,11 @@ def configured() -> bool:
 
 
 def make_client() -> httpx.AsyncClient:
+    url = config.resolve("plex_url")
+    if not url:
+        raise RuntimeError("Not configured — set a URL first")
     return httpx.AsyncClient(
-        base_url=config.resolve("plex_url").rstrip("/"),
+        base_url=url.rstrip("/"),
         headers={"X-Plex-Token": config.resolve("plex_token"),
                  "Accept": "application/json"},
         timeout=10)

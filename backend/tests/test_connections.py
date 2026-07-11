@@ -50,6 +50,18 @@ def test_plex_test_caches_machine_identifier(client, monkeypatch):
     assert config.get_setting("plex_machine_id") == "abc123"
 
 
+def test_test_unconfigured_service_returns_clean_message(client):
+    # No URL configured for seerr — make_client() must not leak a raw
+    # AttributeError ("'NoneType' object has no attribute 'rstrip'").
+    r = client.post("/api/connections/seerr/test")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is False
+    assert "rstrip" not in body["message"]
+    assert "NoneType" not in body["message"]
+    assert "Not configured" in body["message"]
+
+
 def test_failed_test_is_ok_false_not_500(client, monkeypatch):
     import seerr
     def handler(req):

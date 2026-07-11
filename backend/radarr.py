@@ -8,8 +8,11 @@ def configured() -> bool:
 
 
 def make_client() -> httpx.AsyncClient:
+    url = config.resolve("radarr_url")
+    if not url:
+        raise RuntimeError("Not configured — set a URL first")
     return httpx.AsyncClient(
-        base_url=config.resolve("radarr_url").rstrip("/"),
+        base_url=url.rstrip("/"),
         headers={"X-Api-Key": config.resolve("radarr_api_key")},
         timeout=10)
 

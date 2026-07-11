@@ -9,8 +9,11 @@ def configured() -> bool:
 
 
 def make_client() -> httpx.AsyncClient:
+    url = config.resolve("seerr_url")
+    if not url:
+        raise RuntimeError("Not configured — set a URL first")
     return httpx.AsyncClient(
-        base_url=config.resolve("seerr_url").rstrip("/"),
+        base_url=url.rstrip("/"),
         headers={"X-Api-Key": config.resolve("seerr_api_key")},
         timeout=10)
 

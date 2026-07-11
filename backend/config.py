@@ -15,6 +15,8 @@ SETTING_ENV = {
     "jellyfin_url": "JELLYFIN_URL", "jellyfin_api_key": "JELLYFIN_API_KEY",
     "tmdb_api_key": "TMDB_API_KEY",
     "trakt_client_id": "TRAKT_CLIENT_ID",
+    "autolog_enabled": "AUTOLOG_ENABLED",
+    "autolog_interval": "AUTOLOG_INTERVAL",
 }
 
 

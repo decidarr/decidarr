@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import httpx
 
 import config
@@ -62,5 +64,69 @@ def deep_link(native_id):
             f"/details?key=/library/metadata/{native_id}")
 
 
+def _tmdb_from_guids(meta: dict) -> int | None:
+    for g in meta.get("Guid") or []:
+        gid = g.get("id") or ""
+        if gid.startswith("tmdb://"):
+            try:
+                return int(gid[7:])
+            except ValueError:
+                return None
+    return None
+
+
+def _epoch_to_iso(epoch: int) -> str:
+    return datetime.fromtimestamp(epoch, tz=timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ")
+
+
+def _iso_to_epoch(ts: str) -> int:
+    return int(datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
+               .replace(tzinfo=timezone.utc).timestamp())
+
+
 async def recent_watches(client, since):
-    raise NotImplementedError  # reserved for v1.2 auto-log
+    """Completed plays since `since` (ISO UTC), normalized to
+    {account, media_type, tmdb_id, title, year, played_at}. Episode plays
+    carry the SHOW's identity. Plex writes a history entry exactly when it
+    marks the item watched, so history IS the completion signal."""
+    try:
+        r = await client.get("/status/sessions/history/all")
+        r.raise_for_status()
+        entries = (r.json().get("MediaContainer") or {}).get("Metadata") or []
+        since_epoch = _iso_to_epoch(since)
+        fresh = [e for e in entries
+                 if e.get("type") in ("movie", "episode")
+                 and (e.get("viewedAt") or 0) >= since_epoch]
+        if not fresh:
+            return []
+        acc = await client.get("/accounts")
+        acc.raise_for_status()
+        names = {a.get("id"): a.get("name") for a in
+                 (acc.json().get("MediaContainer") or {}).get("Account") or []}
+        out, meta_cache = [], {}
+        for e in fresh:
+            is_episode = e["type"] == "episode"
+            key = str(e.get("grandparentRatingKey") if is_episode
+                      else e.get("ratingKey") or "")
+            if not key:
+                continue
+            if key not in meta_cache:
+                m = await client.get(f"/library/metadata/{key}")
+                m.raise_for_status()
+                metas = (m.json().get("MediaContainer") or {}).get("Metadata") or []
+                if not metas:
+                    continue
+                meta_cache[key] = metas[0]
+            meta = meta_cache[key]
+            out.append({
+                "account": names.get(e.get("accountID")) or "",
+                "media_type": "tv" if is_episode else "movie",
+                "tmdb_id": _tmdb_from_guids(meta),
+                "title": meta.get("title") or "",
+                "year": meta.get("year"),
+                "played_at": _epoch_to_iso(e.get("viewedAt") or 0),
+            })
+        return out
+    except (httpx.HTTPError, ValueError):
+        return []

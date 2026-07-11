@@ -117,3 +117,70 @@ def test_jellyfin_non_json_body_is_unknown(db_file, monkeypatch):
                           base_url="http://jf:8096")
     assert asyncio.run(jellyfin.availability(c, ITEM, "movie")) == \
         ("unknown", "none", None)
+
+
+# --- recent_watches (v1.2 auto-log) ---
+
+def _plex_rw_client(history, accounts, metadata_by_key):
+    def handler(req):
+        p = req.url.path
+        if p == "/status/sessions/history/all":
+            return httpx.Response(200, json={"MediaContainer": {"Metadata": history}})
+        if p == "/accounts":
+            return httpx.Response(200, json={"MediaContainer": {"Account": accounts}})
+        if p.startswith("/library/metadata/"):
+            key = p.rsplit("/", 1)[1]
+            return httpx.Response(200, json={"MediaContainer": {"Metadata": [metadata_by_key[key]]}})
+        raise AssertionError(p)
+    return httpx.AsyncClient(transport=httpx.MockTransport(handler),
+                             base_url="http://plex:32400")
+
+
+def test_plex_recent_watches_movie(db_file):
+    # 2026-07-12T08:00:00Z == epoch 1783843200
+    history = [{"ratingKey": "42", "type": "movie", "viewedAt": 1783843200,
+                "accountID": 1}]
+    accounts = [{"id": 1, "name": "tim"}]
+    meta = {"42": {"title": "The Matrix", "year": 1999,
+                   "Guid": [{"id": "tmdb://603"}]}}
+    plays = asyncio.run(plex.recent_watches(
+        _plex_rw_client(history, accounts, meta), "2026-07-12T00:00:00Z"))
+    assert plays == [{"account": "tim", "media_type": "movie", "tmdb_id": 603,
+                      "title": "The Matrix", "year": 1999,
+                      "played_at": "2026-07-12T08:00:00Z"}]
+
+
+def test_plex_recent_watches_episode_resolves_show(db_file):
+    history = [{"ratingKey": "901", "type": "episode", "viewedAt": 1783843200,
+                "accountID": 2, "grandparentRatingKey": "77"}]
+    accounts = [{"id": 2, "name": "sam"}]
+    meta = {"77": {"title": "Breaking Bad", "year": 2008,
+                   "Guid": [{"id": "tmdb://1396"}]}}
+    plays = asyncio.run(plex.recent_watches(
+        _plex_rw_client(history, accounts, meta), "2026-07-12T00:00:00Z"))
+    assert plays[0]["media_type"] == "tv"
+    assert plays[0]["tmdb_id"] == 1396 and plays[0]["title"] == "Breaking Bad"
+
+
+def test_plex_recent_watches_filters_by_since(db_file):
+    history = [{"ratingKey": "42", "type": "movie", "viewedAt": 1783843200,
+                "accountID": 1}]
+    accounts = [{"id": 1, "name": "tim"}]
+    meta = {"42": {"title": "The Matrix", "year": 1999, "Guid": []}}
+    plays = asyncio.run(plex.recent_watches(
+        _plex_rw_client(history, accounts, meta), "2026-07-12T09:00:00Z"))
+    assert plays == []  # viewedAt 08:00 is before since 09:00
+
+
+def test_plex_recent_watches_never_raises(db_file):
+    def handler(req):
+        raise httpx.ConnectError("down")
+    c = httpx.AsyncClient(transport=httpx.MockTransport(handler),
+                          base_url="http://plex:32400")
+    assert asyncio.run(plex.recent_watches(c, "2026-07-12T00:00:00Z")) == []
+
+    def bad(req):
+        return httpx.Response(200, content=b"<html>proxy error</html>")
+    c2 = httpx.AsyncClient(transport=httpx.MockTransport(bad),
+                           base_url="http://plex:32400")
+    assert asyncio.run(plex.recent_watches(c2, "2026-07-12T00:00:00Z")) == []

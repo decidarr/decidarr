@@ -151,8 +151,13 @@ export const S = {
   // --- duel -----------------------------------------------------------
   duel: {
     title: "Duel",
-    start: "Start a Duel",
+    start: "Start Duel",
+    pickerTitle: "Who's dueling?",
+    needTwoPlayers: "Duels need at least two players.",
     spinning: "Fate is deciding…",
+    fate: "Fate decides",
+    rematch: "Rematch",
+    vs: "VS",
     seenItRespin: "Already seen it — respinning that side.",
     crownWinner: "has the crown tonight.",
     proceedToSummon: "Summon the winner",

@@ -3,6 +3,8 @@ import {
   PROGRESS_POLL_CAP,
   STUCK_SEARCHING_MS,
   activeFilterCount,
+  defaultDuelOpponent,
+  duelCandidates,
   eligibleItems,
   formatMetaLine,
   maskTitle,
@@ -11,7 +13,7 @@ import {
   verdictToAction,
 } from "./logic";
 import { S } from "./strings";
-import type { PoolItem, Progress } from "./types";
+import type { HistoryEntry, Player, PoolItem, Progress } from "./types";
 
 const item = (over: Partial<PoolItem>): PoolItem => ({
   id: 1, tmdb_id: 603, item_key: "tmdb:603", title: "The Matrix",
@@ -51,6 +53,50 @@ describe("pickWinner", () => {
     expect(pickWinner(items, () => 0.99)!.id).toBe(3);
     expect(pickWinner(items, () => 0)!.id).toBe(1);
     expect(pickWinner([], () => 0.5)).toBeNull();
+  });
+});
+
+describe("duelCandidates", () => {
+  it("excludes the other slot's current item on top of normal eligibility", () => {
+    const items = [item({}), item({ id: 2, item_key: "tmdb:604" }),
+                   item({ id: 3, item_key: "tmdb:605" })];
+    expect(duelCandidates(items, F, [], "tmdb:604").map((i) => i.item_key))
+      .toEqual(["tmdb:603", "tmdb:605"]);
+  });
+  it("passes through unchanged when nothing to exclude yet", () => {
+    const items = [item({}), item({ id: 2, item_key: "tmdb:604" })];
+    expect(duelCandidates(items, F, [], null)).toEqual(items);
+  });
+  it("still respects seen/filters before excluding", () => {
+    const items = [item({}), item({ id: 2, item_key: "tmdb:604" })];
+    expect(duelCandidates(items, F, ["tmdb:603"], "tmdb:604")).toEqual([]);
+  });
+});
+
+describe("defaultDuelOpponent", () => {
+  const players: Player[] = [
+    { id: 1, name: "Alice", emoji: null },
+    { id: 2, name: "Bob", emoji: null },
+    { id: 3, name: "Cara", emoji: null },
+  ];
+  const hist = (player: number): HistoryEntry => ({
+    ts: "2026-07-11T00:00:00Z", player, player_name: "x", media_type: "movie",
+    item_key: "tmdb:1", title: "x", year: null, action: "watched",
+  });
+
+  it("picks the most recently active other player from history", () => {
+    expect(defaultDuelOpponent(players, 1, [hist(3), hist(2)])).toBe(3);
+  });
+  it("skips history entries belonging to the current player", () => {
+    expect(defaultDuelOpponent(players, 1, [hist(1), hist(1), hist(2)])).toBe(2);
+  });
+  it("falls back to the first other active player with no usable history", () => {
+    expect(defaultDuelOpponent(players, 1, [])).toBe(2);
+    expect(defaultDuelOpponent(players, 1, [hist(1)])).toBe(2);
+  });
+  it("returns null with no current identity or no other players", () => {
+    expect(defaultDuelOpponent(players, null, [])).toBeNull();
+    expect(defaultDuelOpponent([players[0]], 1, [])).toBeNull();
   });
 });
 

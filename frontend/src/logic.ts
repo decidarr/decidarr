@@ -1,4 +1,6 @@
-import type { Filters, PoolItem, Progress as ProgressData, Stream, Verdict } from "./types";
+import type {
+  Filters, HistoryEntry, Player, PoolItem, Progress as ProgressData, Stream, Verdict,
+} from "./types";
 import { S } from "./strings";
 
 export function eligibleItems(items: PoolItem[], f: Filters,
@@ -42,6 +44,34 @@ export const maskTitle = (_title: string) => "▓".repeat(MASK_WIDTH);
 export const spinDurations = (reducedMotion: boolean) =>
   reducedMotion ? { spin: 300, respin: 300, fate: 300 }
                 : { spin: 2500, respin: 1200, fate: 1500 };
+
+// --- duel (Task 21) ---------------------------------------------------
+
+/** Candidates for one duel slot's spin: the normal eligible pool, minus
+ * whatever the OTHER slot currently holds — duels never mirror-match a
+ * title against itself. `excludeKey` is null when the other slot hasn't
+ * landed on anything yet (first spin of a fresh duel). */
+export function duelCandidates(
+  items: PoolItem[], f: Filters, seen: string[], excludeKey: string | null,
+): PoolItem[] {
+  const pool = eligibleItems(items, f, seen);
+  return excludeKey ? pool.filter((it) => it.item_key !== excludeKey) : pool;
+}
+
+/** Default second duelist for the 3+-player picker: the most recently
+ * active player other than `currentId`, per `state.history[0..]` (newest
+ * first). Falls back to the first other active player when history has
+ * nothing to say (fresh install, or everyone's history is `currentId`'s
+ * own). Returns null only when no other player exists to duel. */
+export function defaultDuelOpponent(
+  players: Player[], currentId: number | null, history: HistoryEntry[],
+): number | null {
+  if (currentId == null) return null;
+  const fromHistory = history.find((h) => h.player !== currentId);
+  if (fromHistory) return fromHistory.player;
+  const other = players.find((p) => p.id !== currentId);
+  return other ? other.id : null;
+}
 
 /** Count of non-default filter *fields* — drives the Header's "Filters · N"
  * badge. Runtime min/max count as a single field (one dual-handle range),

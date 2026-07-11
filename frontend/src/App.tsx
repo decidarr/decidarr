@@ -1,9 +1,10 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Disc3, History, Settings as SettingsIcon, Trophy } from "lucide-react";
 
 import { getPool, getState } from "./api";
+import { Duel } from "./components/Duel";
 import { FiltersSheet } from "./components/FiltersSheet";
 import { Header } from "./components/Header";
 import { IdentityGate } from "./components/IdentityGate";
@@ -23,6 +24,8 @@ function AppShell() {
   const [view, setView] = useState<View>("spin");
   const [identityOpen, setIdentityOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [duelOpen, setDuelOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const stateQuery = useQuery({ queryKey: ["state"], queryFn: getState });
   const poolQuery = useQuery({
@@ -79,6 +82,7 @@ function AppShell() {
             poolLoading={poolQuery.isLoading}
             hasActivePool={hasActivePool}
             onOpenSettings={() => setView("settings")}
+            onLaunchDuel={() => setDuelOpen(true)}
           />
         )}
         {view === "history" && (
@@ -117,6 +121,21 @@ function AppShell() {
       )}
       {filtersOpen && (
         <FiltersSheet stream={stream} pool={pool} onClose={() => setFiltersOpen(false)} />
+      )}
+      {duelOpen && (
+        <Duel
+          players={state.players}
+          pool={pool}
+          seen={seen}
+          onClose={() => setDuelOpen(false)}
+          onDone={() => {
+            // duelWin already committed current_picks server-side — close the
+            // duel and let TonightCard pick it up, same handoff as PickCard's
+            // onCommitted.
+            setDuelOpen(false);
+            queryClient.invalidateQueries({ queryKey: ["state"] });
+          }}
+        />
       )}
 
       <Toast />

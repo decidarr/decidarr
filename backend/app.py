@@ -148,6 +148,8 @@ class VetoIn(BaseModel):
 
 @app.post("/api/veto")
 def post_veto(body: VetoIn):
+    if body.media_type not in ("movie", "tv"):
+        raise HTTPException(422, "bad_media_type")
     tokens = int(config.resolve("veto_tokens") or 1)
     tz = config.resolve("tz") or "UTC"
     conn = db.get_conn()

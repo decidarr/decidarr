@@ -22,9 +22,16 @@ def test_watched_event_clears_matching_pick_only(client, db_file):
         "INSERT INTO current_picks(media_type,item_key,title,picked_by,ts)"
         " VALUES ('movie','tmdb:603','The Matrix',?, '2026-07-11T00:00:00Z')",
         (pid,))
+    # Non-matching row: same item_key, different media_type — must survive.
+    conn.execute(
+        "INSERT INTO current_picks(media_type,item_key,title,picked_by,ts)"
+        " VALUES ('tv','tmdb:603','The Matrix',?, '2026-07-11T00:00:00Z')",
+        (pid,))
     conn.commit(); conn.close()
     client.post("/api/event", json=_evt(pid, "watched"))
-    assert client.get("/api/state").json()["current_picks"] == {}
+    picks = client.get("/api/state").json()["current_picks"]
+    assert "movie" not in picks
+    assert picks["tv"]["item_key"] == "tmdb:603"
 
 def test_veto_spends_tokens_and_409s_when_exhausted(client):
     pid = _player(client)
@@ -34,6 +41,12 @@ def test_veto_spends_tokens_and_409s_when_exhausted(client):
     assert r.status_code == 200 and r.json()["remaining"] == 0
     r = client.post("/api/veto", json={**body, "item_key": "tmdb:2"})
     assert r.status_code == 409 and r.json()["detail"] == "no_tokens"
+
+def test_veto_rejects_bad_media_type(client):
+    pid = _player(client)
+    r = client.post("/api/veto", json={"player": pid, "media_type": "music",
+                    "item_key": "tmdb:1", "title": "A"})
+    assert r.status_code == 422
 
 def test_veto_tokens_setting_raises_allowance(client):
     config.set_setting("veto_tokens", "2")

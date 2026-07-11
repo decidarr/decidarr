@@ -1,5 +1,3 @@
-import db
-
 def _player(client, name="Tim"):
     return client.post("/api/players", json={"name": name}).json()["id"]
 
@@ -39,6 +37,16 @@ def test_streams_are_independent(client):
     assert client.post("/api/duel/win", json=tv).status_code == 200
     picks = client.get("/api/state").json()["current_picks"]
     assert set(picks) == {"movie", "tv"}
+
+def test_same_item_key_coexists_across_streams(client):
+    pid = _player(client)
+    client.post("/api/duel/win", json=_win(pid, key="tmdb:603", title="The Matrix"))
+    client.post("/api/duel/win", json={"player": pid, "media_type": "tv",
+                "item_key": "tmdb:603", "title": "Some Show", "year": 2010})
+    picks = client.get("/api/state").json()["current_picks"]
+    assert set(picks) == {"movie", "tv"}
+    assert picks["movie"]["title"] == "The Matrix"
+    assert picks["tv"]["title"] == "Some Show"
 
 def test_delete_pick_clears_one_stream(client):
     pid = _player(client)

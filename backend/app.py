@@ -184,6 +184,8 @@ def reset_seen(body: ResetSeenIn):
 
 @app.delete("/api/pick")
 def clear_pick(stream: str):
+    if stream not in ("movie", "tv"):
+        raise HTTPException(422, "bad_stream")
     conn = db.get_conn()
     conn.execute("DELETE FROM current_picks WHERE media_type=?", (stream,))
     conn.commit()
@@ -203,6 +205,8 @@ class DuelWinIn(BaseModel):
 
 @app.post("/api/duel/win")
 def duel_win(body: DuelWinIn):
+    if body.media_type not in ("movie", "tv"):
+        raise HTTPException(422, "bad_media_type")
     conn = db.get_conn()
     try:
         db.upsert_pick(conn, body.media_type, body.item_key, body.title,

@@ -176,12 +176,25 @@ export const S = {
     empty: "Nothing logged yet. The night is young.",
     grudgesTitle: "Grudge List",
     grudgesEmpty: "No repeat offenders yet.",
+    action: {
+      watched: "Watched",
+      requested: "Requested",
+    },
+    grudgeCount: (n: number) => `Vetoed ${n} time${n === 1 ? "" : "s"}`,
   },
 
   board: {
     title: "Board",
     seenTotal: "Total watched",
     loading: "Tallying the scores…",
+    empty: "Nobody's spun yet.",
+    stat: {
+      watched: "Watched",
+      requested: "Requested",
+      spun: "Spun",
+      vetoed: "Vetoed",
+      duelWon: "Duels won",
+    },
   },
 
   // --- onboarding --------------------------------------------------------
@@ -207,6 +220,9 @@ export const S = {
     ],
     finish: "Let's go",
     skip: "Skip setup",
+    back: "Back",
+    next: "Next",
+    spinPrompt: "Pick a stream from the header and hit Spin — the wizard's done.",
   },
 
   // --- settings / admin ----------------------------------------------
@@ -222,6 +238,59 @@ export const S = {
     },
     resetSeenConfirm:
       "Clear the seen list? Everything goes back into the pool.",
+
+    players: {
+      title: "Players",
+      empty: "No players yet.",
+      namePlaceholder: "Name",
+      emojiPlaceholder: "Emoji (optional)",
+      add: "Add player",
+      duplicate: "That name's taken.",
+      deactivate: "Remove",
+    },
+
+    pools: {
+      title: "Pools",
+      noneYet: "No pools yet for this stream.",
+      namePlaceholder: "Pool name",
+      source: "Source",
+      sourceCustom: "Custom list",
+      sourceTmdb: "TMDB",
+      sourceTrakt: "Trakt",
+      listId: "List ID",
+      uploadFile: "Upload list",
+      create: "Create pool",
+      refresh: "Refresh",
+      activate: "Activate",
+      active: "Active",
+      refreshedAt: (when: string) => `Refreshed ${when}`,
+      neverRefreshed: "Never refreshed",
+      itemCount: (n: number) => `${n} item${n === 1 ? "" : "s"}`,
+      lastError: (msg: string) => `Last refresh failed: ${msg}`,
+      importResult: (imported: number, unresolved: number) =>
+        unresolved > 0
+          ? `Imported ${imported}, couldn't match ${unresolved}.`
+          : `Imported ${imported}.`,
+    },
+
+    connections: {
+      title: "Connections",
+      test: "Test",
+      saved: "Saved.",
+      urlLabel: "URL",
+      keyLabel: "API key",
+      tokenLabel: "Token",
+      clientIdLabel: "Client ID",
+      services: {
+        seerr: "Overseerr / Jellyseerr",
+        radarr: "Radarr",
+        sonarr: "Sonarr",
+        tmdb: "TMDB",
+        trakt: "Trakt",
+        plex: "Plex",
+        jellyfin: "Jellyfin",
+      },
+    },
   },
 
   // --- attribution ---------------------------------------------------

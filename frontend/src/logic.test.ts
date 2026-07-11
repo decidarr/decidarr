@@ -3,10 +3,13 @@ import {
   PROGRESS_POLL_CAP,
   STUCK_SEARCHING_MS,
   activeFilterCount,
+  buildPlayerStatRows,
+  computeFlavorTitles,
   defaultDuelOpponent,
   duelCandidates,
   eligibleItems,
   formatMetaLine,
+  formatWhen,
   maskTitle,
   pickWinner,
   progressDisplay,
@@ -201,5 +204,67 @@ describe("progressDisplay", () => {
     expect(progressDisplay(p({ state: "done" }), "movie",
       { searchingMs: 0, pollCount: PROGRESS_POLL_CAP }))
       .toEqual({ kind: "done", text: S.progress.done });
+  });
+});
+
+describe("buildPlayerStatRows / computeFlavorTitles", () => {
+  const players: Player[] = [
+    { id: 1, name: "Tim", emoji: null },
+    { id: 2, name: "Sam", emoji: null },
+  ];
+
+  it("joins name-keyed stats back onto ids, defaulting missing actions to 0", () => {
+    expect(buildPlayerStatRows(players, { Tim: { watched: 3, vetoed: 1 } }))
+      .toEqual([
+        { id: 1, name: "Tim", watched: 3, requested: 0, spun: 0, vetoed: 1, duel_won: 0 },
+        { id: 2, name: "Sam", watched: 0, requested: 0, spun: 0, vetoed: 0, duel_won: 0 },
+      ]);
+  });
+
+  it("defaults players missing entirely from the stats map to all zeros", () => {
+    expect(buildPlayerStatRows(players, {})).toEqual([
+      { id: 1, name: "Tim", watched: 0, requested: 0, spun: 0, vetoed: 0, duel_won: 0 },
+      { id: 2, name: "Sam", watched: 0, requested: 0, spun: 0, vetoed: 0, duel_won: 0 },
+    ]);
+  });
+
+  it("crowns nobody when every category is all-zero", () => {
+    expect(computeFlavorTitles(buildPlayerStatRows(players, {}))).toEqual([]);
+  });
+
+  it("breaks ties by the lower player id", () => {
+    const rows = buildPlayerStatRows(players, { Tim: { vetoed: 2 }, Sam: { vetoed: 2 } });
+    expect(computeFlavorTitles(rows)).toEqual([
+      { playerId: 1, label: S.flavorTitles.mostVetoed },
+    ]);
+  });
+
+  it("crowns each category independently — one player can win more than one", () => {
+    const rows = buildPlayerStatRows(players, {
+      Tim: { vetoed: 3, duel_won: 1 },
+      Sam: { duel_won: 4, requested: 5 },
+    });
+    expect(computeFlavorTitles(rows)).toEqual([
+      { playerId: 1, label: S.flavorTitles.mostVetoed },
+      { playerId: 2, label: S.flavorTitles.duelChampion },
+      { playerId: 2, label: S.flavorTitles.theSummoner },
+    ]);
+  });
+
+  it("a single non-zero player wins their categories outright", () => {
+    const rows = buildPlayerStatRows(players, { Tim: { vetoed: 1 } });
+    expect(computeFlavorTitles(rows)).toEqual([
+      { playerId: 1, label: S.flavorTitles.mostVetoed },
+    ]);
+  });
+});
+
+describe("formatWhen", () => {
+  it("formats a valid ISO timestamp without throwing", () => {
+    expect(formatWhen("2026-07-11T20:15:00Z")).not.toBe("2026-07-11T20:15:00Z");
+    expect(typeof formatWhen("2026-07-11T20:15:00Z")).toBe("string");
+  });
+  it("falls back to the raw string for unparseable input", () => {
+    expect(formatWhen("not-a-date")).toBe("not-a-date");
   });
 });

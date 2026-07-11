@@ -1,5 +1,6 @@
 import type {
-  Filters, HistoryEntry, Player, PoolItem, Progress as ProgressData, Stream, Verdict,
+  Filters, HistoryEntry, Player, PoolItem, Progress as ProgressData, StatsBundle,
+  Stream, Verdict,
 } from "./types";
 import { S } from "./strings";
 
@@ -157,4 +158,75 @@ export function progressDisplay(
   }
 
   return { kind: "hidden" };
+}
+
+// --- scoreboard (Task 22) ------------------------------------------------
+
+export interface PlayerStatRow {
+  id: number;
+  name: string;
+  watched: number;
+  requested: number;
+  spun: number;
+  vetoed: number;
+  duel_won: number;
+}
+
+/** Joins /api/stats' name-keyed `combined` map back onto player ids —
+ * `db.stats()` groups by player NAME (see backend/db.py), so this is the
+ * seam that makes the board (and flavor titles) id-addressable again.
+ * Missing actions default to 0 rather than being omitted, so every row has
+ * a stable shape for the board to render. */
+export function buildPlayerStatRows(
+  players: Player[], combined: StatsBundle["combined"],
+): PlayerStatRow[] {
+  return players.map((p) => {
+    const s = combined[p.name] ?? {};
+    return {
+      id: p.id, name: p.name,
+      watched: s.watched ?? 0, requested: s.requested ?? 0,
+      spun: s.spun ?? 0, vetoed: s.vetoed ?? 0, duel_won: s.duel_won ?? 0,
+    };
+  });
+}
+
+export interface FlavorTitle {
+  playerId: number;
+  label: string;
+}
+
+/** "Most Vetoed" / "Duel Champion" / "The Summoner" — highest count per
+ * category wins; ties go to the LOWER player id (deterministic, no
+ * randomness in what's otherwise a scoreboard); a category where every
+ * player is at 0 crowns nobody (never a 0-0 "winner"). Pure so the
+ * tie/zero rules are unit-testable without mounting the Board. */
+export function computeFlavorTitles(rows: PlayerStatRow[]): FlavorTitle[] {
+  const crown = (
+    key: "vetoed" | "duel_won" | "requested", label: string,
+  ): FlavorTitle | null => {
+    let best: PlayerStatRow | null = null;
+    for (const r of rows) {
+      if (r[key] <= 0) continue;
+      if (!best || r[key] > best[key] || (r[key] === best[key] && r.id < best.id)) {
+        best = r;
+      }
+    }
+    return best ? { playerId: best.id, label } : null;
+  };
+  return [
+    crown("vetoed", S.flavorTitles.mostVetoed),
+    crown("duel_won", S.flavorTitles.duelChampion),
+    crown("requested", S.flavorTitles.theSummoner),
+  ].filter((t): t is FlavorTitle => t !== null);
+}
+
+/** Human-readable local timestamp for history rows / pool refresh times.
+ * Backend timestamps are UTC ISO-8601 (`db.utc_now()`); `Date` parses that
+ * natively and formats in the viewer's local timezone. */
+export function formatWhen(ts: string): string {
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return ts;
+  return d.toLocaleString(undefined, {
+    month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+  });
 }

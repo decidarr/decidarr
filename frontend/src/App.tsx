@@ -1,16 +1,20 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Disc3, History, Settings as SettingsIcon, Trophy } from "lucide-react";
+import { Disc3, History as HistoryIcon, Settings as SettingsIcon, Trophy } from "lucide-react";
 
 import { getPool, getState } from "./api";
+import { AdminPinPrompt } from "./components/AdminPin";
 import { Duel } from "./components/Duel";
 import { FiltersSheet } from "./components/FiltersSheet";
 import { Header } from "./components/Header";
 import { IdentityGate } from "./components/IdentityGate";
+import { Onboarding } from "./components/Onboarding";
+import { Settings } from "./components/Settings";
 import { Stage } from "./components/Stage";
 import { Toast } from "./components/Toast";
 import { TonightCard } from "./components/TonightCard";
+import { Board, History } from "./components/Views";
 import { activeFilterCount } from "./logic";
 import { S } from "./strings";
 import { useSession } from "./store";
@@ -25,6 +29,7 @@ function AppShell() {
   const [identityOpen, setIdentityOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [duelOpen, setDuelOpen] = useState(false);
+  const [onboardingSkipped, setOnboardingSkipped] = useState(false);
   const queryClient = useQueryClient();
 
   const stateQuery = useQuery({ queryKey: ["state"], queryFn: getState });
@@ -34,6 +39,14 @@ function AppShell() {
     enabled: !!stateQuery.data,
   });
 
+  // Decided once, the first time /api/state resolves — a fresh install with
+  // no players triggers the wizard. Deliberately NOT re-derived from the
+  // live player count on every render: step 1 of the wizard adds a player,
+  // which must not make the wizard vanish out from under steps 2–4. Refs
+  // are safe to mutate during render (unlike state) and don't trigger an
+  // extra pass, so this reads cleanly as "decide once, use forever".
+  const onboardingDecided = useRef<boolean | null>(null);
+
   if (stateQuery.isLoading) {
     return <div className="app app--centered">{S.common.loading}</div>;
   }
@@ -42,11 +55,21 @@ function AppShell() {
   }
 
   const state = stateQuery.data;
+  if (onboardingDecided.current === null) {
+    onboardingDecided.current = state.players.length === 0;
+  }
 
-  // No players configured yet — the real Onboarding flow is Task 22; until
-  // it lands, the identity gate's empty state keeps the app usable instead
-  // of hard-locking on a blank screen.
-  if (state.players.length === 0 || playerId == null) {
+  if (onboardingDecided.current && !onboardingSkipped) {
+    return (
+      <div className="app app--centered">
+        <Onboarding onFinish={() => setOnboardingSkipped(true)} />
+        <AdminPinPrompt />
+        <Toast />
+      </div>
+    );
+  }
+
+  if (playerId == null) {
     return (
       <div className="app app--centered">
         <IdentityGate players={state.players} current={playerId} onSelect={setPlayer} />
@@ -85,15 +108,9 @@ function AppShell() {
             onLaunchDuel={() => setDuelOpen(true)}
           />
         )}
-        {view === "history" && (
-          <PlaceholderPanel title={S.history.title} body={S.history.empty} />
-        )}
-        {view === "board" && (
-          <PlaceholderPanel title={S.board.title} body={S.board.loading} />
-        )}
-        {view === "settings" && (
-          <PlaceholderPanel title={S.settings.title} body={S.settings.pinRequired} />
-        )}
+        {view === "history" && <History history={state.history} grudges={state.grudges} />}
+        {view === "board" && <Board players={state.players} />}
+        {view === "settings" && <Settings />}
       </main>
 
       <nav className="bottom-nav">
@@ -101,7 +118,7 @@ function AppShell() {
           <Disc3 size={20} aria-hidden="true" />
         </NavButton>
         <NavButton active={view === "history"} label={S.nav.history} onClick={() => setView("history")}>
-          <History size={20} aria-hidden="true" />
+          <HistoryIcon size={20} aria-hidden="true" />
         </NavButton>
         <NavButton active={view === "board"} label={S.nav.board} onClick={() => setView("board")}>
           <Trophy size={20} aria-hidden="true" />
@@ -139,6 +156,7 @@ function AppShell() {
       )}
 
       <Toast />
+      <AdminPinPrompt />
     </div>
   );
 }
@@ -164,15 +182,6 @@ function NavButton({
       {children}
       <span>{label}</span>
     </button>
-  );
-}
-
-function PlaceholderPanel({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="placeholder-panel">
-      <h2>{title}</h2>
-      <p>{body}</p>
-    </div>
   );
 }
 

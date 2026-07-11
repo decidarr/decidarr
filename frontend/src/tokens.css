@@ -1,0 +1,19 @@
+:root {
+  --ink: #10141a;
+  --panel: #1a212b;
+  --line: #2a3442;
+  --gold: #d4a943;
+  --green: #3fae6a;
+  --cream: #e8e0cc;
+  --dim: #7d8899;
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
+  --r-chip: 8px; --r-card: 16px;
+  --track: 6px;
+  --t-micro: 150ms; --t-move: 300ms;
+  --t-spin: 2500ms; --t-respin: 1200ms; --t-fate: 1500ms;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-body: Inter, system-ui, sans-serif;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --t-spin: 300ms; --t-respin: 300ms; --t-fate: 300ms; }
+}

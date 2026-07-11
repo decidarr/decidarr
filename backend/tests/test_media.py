@@ -199,3 +199,27 @@ def test_plex_recent_watches_skips_malformed_entry_keeps_batch(db_file):
     plays = asyncio.run(plex.recent_watches(
         _plex_rw_client(history, accounts, meta), "2026-07-12T00:00:00Z"))
     assert [p["title"] for p in plays] == ["The Matrix"]   # movie survived; episode skipped
+
+
+def test_plex_recent_watches_isolates_failing_metadata_fetch(db_file):
+    history = [
+        {"ratingKey": "66", "type": "movie", "viewedAt": 1783843200, "accountID": 1},  # metadata 404s
+        {"ratingKey": "42", "type": "movie", "viewedAt": 1783843200, "accountID": 1},  # good
+    ]
+
+    def handler(req):
+        p = req.url.path
+        if p == "/status/sessions/history/all":
+            return httpx.Response(200, json={"MediaContainer": {"Metadata": history}})
+        if p == "/accounts":
+            return httpx.Response(200, json={"MediaContainer": {"Account": [{"id": 1, "name": "tim"}]}})
+        if p == "/library/metadata/66":
+            return httpx.Response(404)     # deleted item → raise_for_status raises → inner except skips it
+        if p == "/library/metadata/42":
+            return httpx.Response(200, json={"MediaContainer": {"Metadata": [
+                {"title": "The Matrix", "year": 1999, "Guid": [{"id": "tmdb://603"}]}]}})
+        raise AssertionError(p)
+
+    c = httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="http://plex:32400")
+    plays = asyncio.run(plex.recent_watches(c, "2026-07-12T00:00:00Z"))
+    assert [p["title"] for p in plays] == ["The Matrix"]  # bad entry isolated; good survives

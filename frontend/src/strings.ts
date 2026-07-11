@@ -299,6 +299,14 @@ export const S = {
     trakt: "Pool data powered by Trakt.",
   },
 
+  // --- PWA update toast (Task 23) — a cached shell must never pin a
+  // player to a stale build, so this fires whenever a new service worker
+  // is waiting to take over. ------------------------------------------
+  pwa: {
+    updateAvailable: "New version available.",
+    reload: "Reload",
+  },
+
   // --- generic --------------------------------------------------------
   common: {
     cancel: "Cancel",

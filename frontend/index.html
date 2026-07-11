@@ -2,9 +2,25 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#10141a" />
+    <meta name="description" content="The watch-night decision engine." />
     <title>Decidarr</title>
+
+    <!-- PWA: manifest + icons. %BASE_URL% is substituted by Vite at build
+         time with the `base` config (set from URL_BASE), so these keep
+         resolving correctly under a subpath deploy. -->
+    <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+    <link rel="icon" href="%BASE_URL%favicon.ico" sizes="32x32" />
+    <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" />
+
+    <!-- Open Graph / social preview -->
+    <meta property="og:title" content="Decidarr" />
+    <meta property="og:description" content="The watch-night decision engine." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="%BASE_URL%og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="%BASE_URL%og-image.png" />
   </head>
   <body>
     <div id="root"></div>

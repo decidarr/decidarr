@@ -1,5 +1,7 @@
 import asyncio
 
+import pytest
+
 import autolog
 import config
 import db
@@ -163,3 +165,47 @@ def test_deactivated_players_mapping_ignored(db_file, monkeypatch):
     config.set_setting("autolog_watermark", "2026-07-12T00:00:00Z")
     _wire(monkeypatch, [PLAY])
     assert asyncio.run(autolog.poll_once())["logged"] == 0
+
+
+def test_two_players_same_play_are_distinct_events(db_file, monkeypatch):
+    conn = db.get_conn(db_file); _seed(conn)
+    conn.execute("UPDATE players SET jellyfin_user=NULL, plex_user='sam' WHERE id=2")
+    conn.commit(); conn.close()
+    config.set_setting("autolog_watermark", "2026-07-12T00:00:00Z")
+    _wire(monkeypatch, [PLAY, {**PLAY, "account": "sam"}])   # tim + sam, same item, same ts
+    r = asyncio.run(autolog.poll_once())
+    assert r["logged"] == 2
+    conn = db.get_conn(db_file)
+    players = {row["player"] for row in conn.execute(
+        "SELECT player FROM events WHERE action='watched' AND item_key='tmdb:603'")}
+    assert players == {1, 2}
+    conn.close()
+
+
+def test_fetch_uses_60s_overlap_window(db_file, monkeypatch):
+    conn = db.get_conn(db_file); _seed(conn); conn.close()
+    config.set_setting("autolog_watermark", "2026-07-12T00:00:00Z")
+    calls = _wire(monkeypatch, [])
+    asyncio.run(autolog.poll_once())
+    assert calls == ["2026-07-11T23:59:00Z"]
+
+
+def test_watermark_advances_even_when_all_plays_skipped(db_file, monkeypatch):
+    conn = db.get_conn(db_file); _seed(conn); conn.close()
+    config.set_setting("autolog_watermark", "2026-07-12T00:00:00Z")
+    _wire(monkeypatch, [{**PLAY, "account": "stranger"}])   # unmapped, not the pick -> skipped
+    r = asyncio.run(autolog.poll_once())
+    assert r["logged"] == 0
+    assert config.get_setting("autolog_watermark") == "2026-07-12T08:00:00Z"
+
+
+@pytest.mark.parametrize("val,expected", [
+    (None, True), ("1", True), ("true", True), ("anything", True),
+    ("0", False), ("false", False), ("no", False), ("off", False),
+    ("OFF", False), ("  false  ", False),
+])
+def test_enabled_truthiness(db_file, monkeypatch, val, expected):
+    monkeypatch.delenv("AUTOLOG_ENABLED", raising=False)
+    if val is not None:
+        config.set_setting("autolog_enabled", val)
+    assert autolog.enabled() is expected

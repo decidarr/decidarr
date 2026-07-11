@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 320" width="1080" height="320">
+  <!-- Decidarr wordmark lockup: Reel Roulette mark + type -->
+  <rect x="0" y="0" width="1080" height="320" rx="36" fill="#10141a"/>
+  <!-- mark (Reel Roulette, scaled) -->
+  <g transform="translate(36,32) scale(0.5)">
+    <circle cx="256" cy="256" r="248" fill="#10141a"/>
+    <circle cx="256" cy="256" r="244" fill="none" stroke="#2a3442" stroke-width="4"/>
+    <circle cx="256" cy="266" r="186" fill="#1a212b" stroke="#d4a943" stroke-width="14"/>
+    <g fill="#10141a" stroke="#2f3a49" stroke-width="4">
+      <circle cx="256" cy="152" r="44"/>
+      <circle cx="355" cy="209" r="44"/>
+      <circle cx="355" cy="323" r="44"/>
+      <circle cx="256" cy="380" r="44"/>
+      <circle cx="157" cy="323" r="44"/>
+      <circle cx="157" cy="209" r="44"/>
+    </g>
+    <circle cx="355" cy="209" r="30" fill="#3fae6a"/>
+    <circle cx="256" cy="266" r="40" fill="#d4a943"/>
+    <circle cx="256" cy="266" r="14" fill="#10141a"/>
+    <path d="M 230 10 L 282 10 L 256 62 Z" fill="#d4a943"/>
+  </g>
+  <!-- wordmark -->
+  <text x="330" y="180" font-family="'DejaVu Sans Mono','JetBrains Mono',monospace"
+        font-size="88" font-weight="bold" letter-spacing="4" fill="#e8e0cc">DECID<tspan fill="#d4a943">ARR</tspan></text>
+  <text x="334" y="238" font-family="'DejaVu Sans Mono','JetBrains Mono',monospace"
+        font-size="25" letter-spacing="5" fill="#7d8899">THE WATCH-NIGHT DECISION ENGINE</text>
+</svg>

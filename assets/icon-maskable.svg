@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Decidarr maskable icon: full-bleed ink, mark scaled into the 80% safe zone -->
+  <rect x="0" y="0" width="512" height="512" fill="#10141a"/>
+  <g transform="translate(256,256) scale(0.72) translate(-256,-256)">
+    <circle cx="256" cy="266" r="186" fill="#1a212b" stroke="#d4a943" stroke-width="14"/>
+    <g fill="#10141a" stroke="#2f3a49" stroke-width="4">
+      <circle cx="256" cy="152" r="44"/>
+      <circle cx="355" cy="209" r="44"/>
+      <circle cx="355" cy="323" r="44"/>
+      <circle cx="256" cy="380" r="44"/>
+      <circle cx="157" cy="323" r="44"/>
+      <circle cx="157" cy="209" r="44"/>
+    </g>
+    <circle cx="355" cy="209" r="30" fill="#3fae6a"/>
+    <circle cx="256" cy="266" r="40" fill="#d4a943"/>
+    <circle cx="256" cy="266" r="14" fill="#10141a"/>
+    <path d="M 230 10 L 282 10 L 256 62 Z" fill="#d4a943"/>
+  </g>
+</svg>

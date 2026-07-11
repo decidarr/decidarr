@@ -29,9 +29,12 @@ function requestAdminPin(): Promise<string> {
 }
 
 /** Runs `fn`; on a 401 `admin_pin_required`, prompts for the PIN, sets it,
- * and retries once. A cancelled prompt re-throws the original 401 so
- * callers' existing catch-blocks (toast on any failure) keep working
- * unchanged. */
+ * and retries once. Rather than re-throwing the bare `admin_pin_required`
+ * token (which can't distinguish the two failure modes), it surfaces a
+ * distinct detail per outcome so callers can message each correctly:
+ *   - `pin_cancelled` — the player dismissed the prompt without entering one
+ *   - `pin_incorrect` — a PIN was entered but the retry still 401'd (wrong PIN)
+ * Any other error propagates unchanged. */
 export async function withAdminPin<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
@@ -41,10 +44,17 @@ export async function withAdminPin<T>(fn: () => Promise<T>): Promise<T> {
       try {
         pin = await requestAdminPin();
       } catch {
-        throw e;
+        throw new ApiError(401, "pin_cancelled");
       }
       setAdminPin(pin);
-      return await fn();
+      try {
+        return await fn();
+      } catch (retryErr) {
+        if (retryErr instanceof ApiError && retryErr.detail === "admin_pin_required") {
+          throw new ApiError(401, "pin_incorrect");
+        }
+        throw retryErr;
+      }
     }
     throw e;
   }

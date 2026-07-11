@@ -22,6 +22,15 @@ export function isActive(p: Player): boolean {
   return p.active === 1 || p.active === true || p.active === undefined;
 }
 
+/** Turns a `withAdminPin` PIN-outcome detail into player-facing copy —
+ * cancelled vs wrong PIN are deliberately distinct — and passes any other
+ * detail through untouched (already a message in practice). */
+function pinAwareMessage(detail: string): string {
+  if (detail === "pin_cancelled") return S.settings.pinCancelled;
+  if (detail === "pin_incorrect") return S.settings.pinIncorrect;
+  return detail;
+}
+
 // --- Players --------------------------------------------------------------
 
 export function PlayersSection() {
@@ -399,12 +408,11 @@ export function ConnectionsSection() {
       const r = await withAdminPin(() => testConnection(svc.service));
       setTestResults((s) => ({ ...s, [svc.service]: r }));
     } catch (e) {
-      // A cancelled admin-PIN prompt re-throws ApiError{detail:"admin_pin_required"}
-      // — that's an internal token, not a human-readable message, so it needs
-      // its own friendly copy rather than being rendered raw.
-      const message = e instanceof ApiError
-        ? (e.detail === "admin_pin_required" ? S.settings.pinCancelled : e.detail)
-        : S.settings.connectionTest.fail;
+      // withAdminPin surfaces PIN outcomes as internal tokens, not
+      // human-readable copy — map each to its own friendly string (a
+      // cancelled prompt and a wrong PIN are different situations and must
+      // not be conflated), falling back to any other detail as-is.
+      const message = e instanceof ApiError ? pinAwareMessage(e.detail) : S.settings.connectionTest.fail;
       setTestResults((s) => ({
         ...s,
         [svc.service]: { ok: false, message },

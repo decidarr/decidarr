@@ -94,3 +94,96 @@ def item_key(tmdb_id: int | None, title: str, year: int | None) -> str:
     if tmdb_id:
         return f"tmdb:{tmdb_id}"
     return f"t:{normalize(title)}|{year if year is not None else ''}"
+
+
+# --- events & derived queries -------------------------------------------
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def log_event(conn, player, media_type, item_key, title, year, action):
+    ts = utc_now()
+    conn.execute(
+        "INSERT INTO events(ts,player,media_type,item_key,title,year,action)"
+        " VALUES (?,?,?,?,?,?,?)",
+        (ts, player, media_type, item_key, title, year, action))
+    if action == "watched":
+        conn.execute(
+            "INSERT INTO events(ts,player,media_type,item_key,title,year,action)"
+            " VALUES (?,?,?,?,?,?,'seen')",
+            (ts, player, media_type, item_key, title, year))
+        conn.execute(
+            "DELETE FROM current_picks WHERE media_type=? AND item_key=?",
+            (media_type, item_key))
+    conn.commit()
+
+
+def seen_keys(conn, media_type):
+    rows = conn.execute(
+        "SELECT DISTINCT item_key FROM events"
+        " WHERE action='seen' AND media_type=?", (media_type,))
+    return {r["item_key"] for r in rows}
+
+
+def history(conn, limit=50):
+    rows = conn.execute(
+        "SELECT e.ts, e.player, p.name AS player_name, e.media_type,"
+        "       e.item_key, e.title, e.year, e.action"
+        " FROM events e JOIN players p ON p.id = e.player"
+        " WHERE e.action IN ('watched','requested')"
+        " ORDER BY e.id DESC LIMIT ?", (limit,))
+    return [dict(r) for r in rows]
+
+
+def grudges(conn):
+    rows = conn.execute(
+        "SELECT e.media_type, e.item_key, MAX(e.title) AS title,"
+        "       p.name AS player_name, COUNT(*) AS n"
+        " FROM events e JOIN players p ON p.id = e.player"
+        " WHERE e.action='vetoed'"
+        " GROUP BY e.media_type, e.item_key, e.player")
+    agg: dict[tuple, dict] = {}
+    for r in rows:
+        key = (r["media_type"], r["item_key"])
+        g = agg.setdefault(key, {"media_type": r["media_type"],
+                                 "item_key": r["item_key"],
+                                 "title": r["title"], "count": 0, "by": {}})
+        g["count"] += r["n"]
+        g["by"][r["player_name"]] = r["n"]
+    out = [g for g in agg.values() if g["count"] >= 2]
+    out.sort(key=lambda g: -g["count"])
+    return out
+
+
+def vetoes_used_today(conn, player, tz_name):
+    tz = ZoneInfo(tz_name or "UTC")
+    today = datetime.now(tz).date()
+    rows = conn.execute(
+        "SELECT ts FROM events WHERE action='vetoed' AND player=?", (player,))
+    used = 0
+    for r in rows:
+        ts = datetime.strptime(r["ts"], "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=timezone.utc)
+        if ts.astimezone(tz).date() == today:
+            used += 1
+    return used
+
+
+def stats(conn):
+    out = {"movie": {}, "tv": {}, "combined": {}}
+    rows = conn.execute(
+        "SELECT p.name, e.media_type, e.action, COUNT(*) AS n"
+        " FROM events e JOIN players p ON p.id = e.player"
+        " GROUP BY p.name, e.media_type, e.action")
+    for r in rows:
+        for scope in (r["media_type"], "combined"):
+            player = out[scope].setdefault(r["name"], {})
+            player[r["action"]] = player.get(r["action"], 0) + r["n"]
+    seen_total = conn.execute(
+        "SELECT COUNT(DISTINCT media_type || '|' || item_key) AS n"
+        " FROM events WHERE action='seen'").fetchone()["n"]
+    return {**out, "seen_total": seen_total, "top_grudges": grudges(conn)[:5]}

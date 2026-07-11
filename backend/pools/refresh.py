@@ -122,7 +122,9 @@ async def _fetch_missing(conn, pool_id, media_type, need_fetch):
             (d["runtime"], d["seasons"], json.dumps(d["genres"]),
              d["rating"], d["poster"], pool_id, tid))
         enriched += 1
-    conn.commit()
+    # No commit here — the caller flushes these enrichment writes together with
+    # the refreshed_at stamp so the two land in one transaction (a crash can't
+    # leave enriched rows under a stale "last refreshed" time).
     return enriched, failed
 
 
@@ -149,6 +151,8 @@ async def refresh_pool(pool_id: int) -> dict:
         need_fetch = _enrich_from_siblings(conn, pool_id, mt, new_ids)
         enriched, failed = await _fetch_missing(conn, pool_id, mt, need_fetch)
 
+        # One commit for the enrichment writes (uncommitted by _fetch_missing)
+        # and the refreshed_at stamp — they persist atomically together.
         conn.execute("UPDATE pools SET refreshed_at=? WHERE id=?",
                      (db.utc_now(), pool_id))
         conn.commit()

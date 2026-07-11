@@ -1,4 +1,5 @@
-import type { Filters, PoolItem, Verdict } from "./types";
+import type { Filters, PoolItem, Progress as ProgressData, Stream, Verdict } from "./types";
+import { S } from "./strings";
 
 export function eligibleItems(items: PoolItem[], f: Filters,
                               seen: string[]): PoolItem[] {
@@ -52,4 +53,78 @@ export function activeFilterCount(f: Filters): number {
   if (f.decade !== null) n++;
   if (f.includeSeen) n++;
   return n;
+}
+
+/** Meta line under a pick's title: year / runtime / (TV: seasons) /
+ * rating / rank. Any missing field is simply omitted, never shown as a
+ * placeholder — Swamp Roulette's card never rendered "null". */
+export function formatMetaLine(item: PoolItem, stream: Stream): string {
+  const parts: string[] = [];
+  if (item.year != null) parts.push(String(item.year));
+  if (item.runtime != null) parts.push(`${item.runtime}m`);
+  if (stream === "tv" && item.seasons != null) {
+    parts.push(`${item.seasons} season${item.seasons === 1 ? "" : "s"}`);
+  }
+  if (item.rating != null) parts.push(`★${item.rating.toFixed(1)}`);
+  if (item.rank != null) parts.push(`#${item.rank}`);
+  return parts.join(" · ");
+}
+
+// --- progress watcher: pure state -> display mapping -----------------------
+
+/** Poll cadence/limits shared by the Progress component and its tests. */
+export const PROGRESS_POLL_MS = 5000;
+export const PROGRESS_POLL_CAP = 180;
+export const STUCK_SEARCHING_MS = 10 * 60 * 1000; // 10 minutes
+
+export type ProgressDisplay =
+  | { kind: "hidden" }
+  | { kind: "bar"; percent: number; eta: string | null; label: string }
+  | { kind: "label"; text: string }
+  | { kind: "done"; text: string }
+  | { kind: "stuck"; text: string }
+  | { kind: "capped"; text: string };
+
+/** Maps a raw /api/progress result + poll bookkeeping to what the card
+ * should show. Pure so the poll-cap and stuck-state decisions (the two
+ * trickiest bits of the watcher) are unit-testable without mounting React
+ * or faking timers inside a component. */
+export function progressDisplay(
+  p: ProgressData,
+  stream: Stream,
+  opts: { searchingMs: number; pollCount: number },
+): ProgressDisplay {
+  if (p.state === "unconfigured" || p.state === "unknown") return { kind: "hidden" };
+
+  if (p.state === "done") {
+    if (stream === "tv" && p.landed) {
+      return { kind: "done", text: S.progress.landed(p.landed.ready, p.landed.total) };
+    }
+    return { kind: "done", text: S.progress.done };
+  }
+
+  // Poll-cap expiry outranks "searching" — an exhausted watcher shouldn't
+  // keep suggesting it's still actively hunting.
+  if (opts.pollCount >= PROGRESS_POLL_CAP) {
+    return { kind: "capped", text: S.progress.checkBackLater };
+  }
+
+  if (p.state === "searching") {
+    return opts.searchingMs >= STUCK_SEARCHING_MS
+      ? { kind: "stuck", text: S.progress.stillHunting }
+      : { kind: "label", text: S.progress.searching };
+  }
+
+  if (p.state === "importing") return { kind: "label", text: S.progress.importing };
+
+  if (p.state === "queued" || p.state === "downloading") {
+    return {
+      kind: "bar",
+      percent: p.percent,
+      eta: p.eta,
+      label: p.state === "queued" ? S.progress.queued : S.progress.downloading,
+    };
+  }
+
+  return { kind: "hidden" };
 }

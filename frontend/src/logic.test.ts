@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
+  PROGRESS_POLL_CAP,
+  STUCK_SEARCHING_MS,
   activeFilterCount,
   eligibleItems,
+  formatMetaLine,
   maskTitle,
   pickWinner,
+  progressDisplay,
   verdictToAction,
 } from "./logic";
-import type { PoolItem } from "./types";
+import { S } from "./strings";
+import type { PoolItem, Progress } from "./types";
 
 const item = (over: Partial<PoolItem>): PoolItem => ({
   id: 1, tmdb_id: 603, item_key: "tmdb:603", title: "The Matrix",
@@ -82,5 +87,73 @@ describe("activeFilterCount", () => {
     expect(activeFilterCount({
       ...F, runtimeMin: 40, genres: ["Drama"], decade: 1990, includeSeen: true,
     })).toBe(4);
+  });
+});
+
+describe("formatMetaLine", () => {
+  it("joins year/runtime/rating/rank, omitting missing fields", () => {
+    expect(formatMetaLine(item({}), "movie")).toBe("1999 · 136m · ★8.2 · #1");
+    expect(formatMetaLine(item({ runtime: null, rating: null, rank: null }), "movie"))
+      .toBe("1999");
+  });
+  it("adds a pluralized season count for TV, ignored for movies", () => {
+    const show = item({ seasons: 3 });
+    expect(formatMetaLine(show, "tv")).toBe("1999 · 136m · 3 seasons · ★8.2 · #1");
+    expect(formatMetaLine(item({ seasons: 1 }), "tv"))
+      .toBe("1999 · 136m · 1 season · ★8.2 · #1");
+    expect(formatMetaLine(show, "movie")).not.toContain("season");
+  });
+});
+
+describe("progressDisplay", () => {
+  const p = (over: Partial<Progress>): Progress =>
+    ({ state: "queued", percent: 0, eta: null, title: null, ...over });
+  const noPoll = { searchingMs: 0, pollCount: 0 };
+
+  it("hides for unconfigured/unknown", () => {
+    expect(progressDisplay(p({ state: "unconfigured" }), "movie", noPoll))
+      .toEqual({ kind: "hidden" });
+    expect(progressDisplay(p({ state: "unknown" }), "movie", noPoll))
+      .toEqual({ kind: "hidden" });
+  });
+
+  it("shows a bar with eta for queued/downloading", () => {
+    const d = progressDisplay(p({ state: "downloading", percent: 42, eta: "5m" }),
+      "movie", noPoll);
+    expect(d).toEqual({ kind: "bar", percent: 42, eta: "5m", label: S.progress.downloading });
+  });
+
+  it("importing is a plain label", () => {
+    expect(progressDisplay(p({ state: "importing" }), "movie", noPoll))
+      .toEqual({ kind: "label", text: S.progress.importing });
+  });
+
+  it("done maps to the movie copy, or TV's landed count when present", () => {
+    expect(progressDisplay(p({ state: "done" }), "movie", noPoll))
+      .toEqual({ kind: "done", text: S.progress.done });
+    const tv = progressDisplay(p({ state: "done", landed: { ready: 3, total: 10 } }),
+      "tv", noPoll);
+    expect(tv).toEqual({ kind: "done", text: S.progress.landed(3, 10) });
+  });
+
+  it("searching stays a label until it's been stuck for 10+ minutes", () => {
+    expect(progressDisplay(p({ state: "searching" }), "movie",
+      { searchingMs: STUCK_SEARCHING_MS - 1, pollCount: 0 }))
+      .toEqual({ kind: "label", text: S.progress.searching });
+    expect(progressDisplay(p({ state: "searching" }), "movie",
+      { searchingMs: STUCK_SEARCHING_MS, pollCount: 0 }))
+      .toEqual({ kind: "stuck", text: S.progress.stillHunting });
+  });
+
+  it("poll-cap expiry outranks searching", () => {
+    expect(progressDisplay(p({ state: "searching" }), "movie",
+      { searchingMs: 0, pollCount: PROGRESS_POLL_CAP }))
+      .toEqual({ kind: "capped", text: S.progress.checkBackLater });
+  });
+
+  it("does not cap a state that has already landed", () => {
+    expect(progressDisplay(p({ state: "done" }), "movie",
+      { searchingMs: 0, pollCount: PROGRESS_POLL_CAP }))
+      .toEqual({ kind: "done", text: S.progress.done });
   });
 });

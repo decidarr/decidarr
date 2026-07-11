@@ -506,26 +506,6 @@ button {
   }
 }
 
-.landed-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--s3);
-  text-align: center;
-}
-
-.landed-card__title {
-  margin: 0;
-  font-size: 1.2rem;
-}
-
-.landed-card__meta {
-  margin: 0;
-  color: var(--dim);
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-}
-
 .empty-wheel {
   width: 100%;
   padding: var(--s6) var(--s4);
@@ -676,6 +656,227 @@ button {
   font-weight: 600;
   min-height: 44px;
   padding: 0 var(--s2);
+}
+
+/* --- pick card (Task 20) ------------------------------------------------ */
+
+.pick-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s3);
+  text-align: center;
+}
+
+.pick-card__title {
+  margin: 0;
+  font-size: 1.2rem;
+  /* Blind-mode mask uses the monospace family so the fixed-width block
+     glyphs line up cleanly instead of proportional-font jitter. */
+  font-family: var(--font-mono);
+}
+
+.pick-card__meta {
+  margin: 0;
+  color: var(--dim);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.pick-card__primary {
+  width: 100%;
+}
+
+.pick-card__hint {
+  margin: 0;
+  color: var(--dim);
+  font-size: 0.9rem;
+}
+
+.pick-card__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s5);
+  width: 100%;
+  margin-top: var(--s2);
+}
+
+.availability-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  min-height: 28px;
+  padding: 0 var(--s3);
+  border-radius: var(--r-chip);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.availability-chip--available {
+  background: color-mix(in srgb, var(--green) 18%, transparent);
+  border: 1px solid var(--green);
+  color: var(--green);
+}
+
+.btn-primary {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  background: var(--gold);
+  color: var(--ink);
+  border: none;
+  border-radius: var(--r-chip);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.btn-veto {
+  min-height: 44px;
+  padding: 0 var(--s4);
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r-chip);
+  color: var(--cream);
+}
+
+.btn-veto--disabled {
+  opacity: 0.5;
+}
+
+/* --- progress watcher (Task 20) ----------------------------------------- */
+
+.progress {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.progress-bar__track {
+  width: 100%;
+  height: var(--track);
+  background: var(--line);
+  border-radius: calc(var(--track) / 2);
+  overflow: hidden;
+}
+
+.progress-bar__fill {
+  height: 100%;
+  background: var(--gold);
+  transition: width var(--t-move) ease-out;
+}
+
+.progress__label {
+  margin: 0;
+  color: var(--dim);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.progress__done {
+  margin: 0;
+  color: var(--green);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.progress__stuck {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s1);
+}
+
+.progress__seerr-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  color: var(--gold);
+  font-size: 0.8rem;
+}
+
+/* --- tonight card (Task 20) ---------------------------------------------- */
+
+.tonight-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2);
+  text-align: center;
+  padding: var(--s4);
+  margin: var(--s4) var(--s4) 0;
+  background: var(--panel);
+  border: 1px solid var(--gold);
+  border-radius: var(--r-card);
+}
+
+.tonight-card__header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tonight-card__label {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gold);
+  font-size: 0.75rem;
+}
+
+.tonight-card__clear {
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--dim);
+}
+
+.tonight-card__title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.tonight-card__meta {
+  margin: 0;
+  color: var(--dim);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.tonight-card__watch,
+.tonight-card__markwatched {
+  max-width: 320px;
+}
+
+/* --- confirm sheet (Task 20) --------------------------------------------- */
+
+.confirm-sheet__body {
+  color: var(--dim);
+  margin: 0 0 var(--s4);
+}
+
+.confirm-sheet__actions {
+  display: flex;
+  gap: var(--s3);
+}
+
+.confirm-sheet__actions .btn-secondary,
+.confirm-sheet__actions .btn-primary {
+  flex: 1;
 }
 
 /* --- placeholder panels (History/Board/Settings — Task 22) ------------- */

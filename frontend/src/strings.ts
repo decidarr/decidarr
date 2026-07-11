@@ -78,7 +78,9 @@ export const S = {
 
   // --- veto sass ----------------------------------------------------------
   veto: {
+    button: "Veto",
     confirmTitle: "Veto this pick?",
+    undoPrompt: "Vetoed. Undo?",
     outOfTokens: "You're out of vetoes for tonight. Live with it.",
     used: (remaining: number) =>
       remaining > 0
@@ -102,6 +104,11 @@ export const S = {
     downloading: "On its way in.",
     importing: "Almost there — tidying up the file.",
     done: "Landed. Go press play.",
+    landed: (ready: number, total: number) => `${ready} of ${total} landed`,
+    stillHunting:
+      "This one's dragging its feet. Might be worth a manual look in Seerr.",
+    seerrLink: "Open in Seerr",
+    checkBackLater: "Download's still going — check back later.",
     stuck: [
       "This one's dragging its feet. Might be worth a look in Radarr/Sonarr.",
       "Still searching after all this time — the indexers may be having a bad night.",
@@ -109,16 +116,36 @@ export const S = {
     ],
   },
 
+  // --- availability chip ---------------------------------------------
+  availability: {
+    available: "In your library",
+    probably: "Probably in your library",
+  },
+
   // --- summon actions -------------------------------------------------
   watch: {
     summon: "Watch Now",
+    letsWatch: "Let's Watch",
+    summonAction: "Summon",
     requesting: "Summoning…",
     requested: "Requested. It'll show up when it's ready.",
+    pendingConflictTitle: "Replace tonight's pick?",
     pendingConflict:
       "There's already a pick tonight for this stream. Replace it?",
     replace: "Replace pick",
     markWatched: "Mark Watched",
     watchedConfirm: "Logged. Enjoy.",
+    seenIt: "Seen it",
+    seenItRespin: "Already seen it. Respinning.",
+    configureHint: "Connect Overseerr/Jellyseerr in Settings to summon this one.",
+    manualHint: "Couldn't match this one automatically — grab it manually.",
+    clearPick: "Clear pick",
+    clearPickConfirm: "Clear tonight's pick? It goes back in the pool.",
+  },
+
+  // --- tonight's pick ---------------------------------------------------
+  tonight: {
+    title: "Tonight",
   },
 
   // --- duel -----------------------------------------------------------
@@ -206,5 +233,7 @@ export const S = {
     retry: "Try again",
     loading: "Loading…",
     save: "Save",
+    undo: "Undo",
+    writeFailed: "Couldn't save that. Try again.",
   },
 } as const;

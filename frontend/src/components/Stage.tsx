@@ -4,9 +4,12 @@
 // via an aria-live region.
 import { useEffect, useRef, useState } from "react";
 import { Disc3, Swords } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { eligibleItems, pickWinner, spinDurations } from "../logic";
 import { postEvent } from "../api";
+import { PickCard } from "./PickCard";
+import { toast } from "./Toast";
 import { S } from "../strings";
 import { useSession } from "../store";
 import type { PoolItem } from "../types";
@@ -15,7 +18,7 @@ type Phase =
   | { kind: "idle" }
   | { kind: "empty" }
   | { kind: "loading" }
-  | { kind: "spinning"; winner: PoolItem; candidates: PoolItem[] }
+  | { kind: "spinning"; winner: PoolItem; candidates: PoolItem[]; respin?: boolean }
   | { kind: "landed"; winner: PoolItem };
 
 interface StageProps {
@@ -45,6 +48,7 @@ export function Stage({
   onLaunchDuel,
 }: StageProps) {
   const { playerId, stream, filters, resetFilters, setFilters } = useSession();
+  const queryClient = useQueryClient();
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [live, setLive] = useState("");
   const [displayItem, setDisplayItem] = useState<PoolItem | null>(null);
@@ -73,7 +77,7 @@ export function Stage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream]);
 
-  function spin() {
+  function spin(opts?: { respin?: boolean }) {
     const candidates = eligibleItems(pool, filters, seen);
     const winner = pickWinner(candidates);
     if (!winner) {
@@ -84,7 +88,7 @@ export function Stage({
       return;
     }
     clearTimers();
-    setPhase({ kind: "spinning", winner, candidates });
+    setPhase({ kind: "spinning", winner, candidates, respin: opts?.respin });
     setLive(S.spinResult(winner.title)); // aria-live gets it immediately
     if (playerId != null) {
       postEvent({
@@ -101,9 +105,15 @@ export function Stage({
     }
     landTimer.current = window.setTimeout(
       () => setPhase({ kind: "landed", winner }),
-      spinDurations(reduced).spin,
+      opts?.respin ? spinDurations(reduced).respin : spinDurations(reduced).spin,
     );
   }
+
+  // Veto (grace expiry) and Seen-it both invalidate the current landed pick
+  // and want a fresh one immediately — same shortened beat as a duel slot
+  // re-spin (design spec: "Re-spins (veto, duel slot) reuse the same beat,
+  // shortened").
+  const respin = () => spin({ respin: true });
 
   // Poster-shuffle: cycles the displayed poster through candidates with a
   // decreasing interval, overshoots one past the winner, then settles back.
@@ -111,14 +121,14 @@ export function Stage({
   // and a CSS crossfade (var(--t-move), 300ms) does the rest.
   useEffect(() => {
     if (phase.kind !== "spinning") return;
-    const { winner, candidates } = phase;
+    const { winner, candidates, respin: isRespin } = phase;
 
     if (reduced) {
       setDisplayItem(winner);
       return;
     }
 
-    const total = spinDurations(reduced).spin;
+    const total = isRespin ? spinDurations(reduced).respin : spinDurations(reduced).spin;
     const settlePortion = Math.min(500, total * 0.2);
     const cyclePortion = total - settlePortion;
     const deck = candidates.length ? candidates : [winner];
@@ -193,17 +203,16 @@ export function Stage({
         )}
 
         {phase.kind === "landed" && (
-          // Placeholder for PickCard (Task 20) — the fixed Spin button
-          // below already re-spins from this phase, so no inline re-spin
-          // affordance is needed here.
-          <div className="landed-card">
-            <PosterBox item={phase.winner} />
-            <h3 className="landed-card__title">{phase.winner.title}</h3>
-            <p className="landed-card__meta">
-              {phase.winner.year ?? ""}
-              {phase.winner.runtime ? ` · ${phase.winner.runtime}m` : ""}
-            </p>
-          </div>
+          <PickCard
+            key={phase.winner.item_key}
+            item={phase.winner}
+            onVetoed={(remaining) => {
+              toast(S.veto.used(remaining));
+              respin();
+            }}
+            onSeenIt={respin}
+            onReplaced={() => queryClient.invalidateQueries({ queryKey: ["state"] })}
+          />
         )}
       </div>
 
@@ -212,7 +221,7 @@ export function Stage({
           <button
             type="button"
             className="spin-button"
-            onClick={spin}
+            onClick={() => spin()}
             disabled={phase.kind === "spinning"}
           >
             <Disc3 size={20} aria-hidden="true" />

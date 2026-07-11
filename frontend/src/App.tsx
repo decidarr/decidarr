@@ -9,6 +9,7 @@ import { Header } from "./components/Header";
 import { IdentityGate } from "./components/IdentityGate";
 import { Stage } from "./components/Stage";
 import { Toast } from "./components/Toast";
+import { TonightCard } from "./components/TonightCard";
 import { activeFilterCount } from "./logic";
 import { S } from "./strings";
 import { useSession } from "./store";
@@ -55,6 +56,7 @@ function AppShell() {
   const seen = state.seen[stream] ?? [];
   const filterCount = activeFilterCount(filters);
   const hasActivePool = state.pools[stream] != null;
+  const currentPick = state.current_picks[stream];
 
   return (
     <div className="app">
@@ -67,8 +69,7 @@ function AppShell() {
         onOpenFilters={() => setFiltersOpen(true)}
       />
 
-      {/* TonightCard slot (Task 20) renders here, above the Stage, sourced
-          from state.current_picks[stream]. */}
+      {currentPick && <TonightCard key={currentPick.item_key} pick={currentPick} />}
 
       <main className="app__main">
         {view === "spin" && (

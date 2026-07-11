@@ -1,7 +1,9 @@
+import asyncio
+import json
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -11,15 +13,35 @@ import radarr
 import seerr
 import sonarr
 from media import get_backend
+from pools import custom as custom_pool, refresh as pool_refresh, tmdb as tmdb_pool
 
 VERSION = "1.0.0"
+
+
+async def _daily_refresh():
+    while True:
+        await asyncio.sleep(86400)
+        conn = db.get_conn()
+        ids = [r["id"] for r in conn.execute("SELECT id FROM pools WHERE active=1")]
+        conn.close()
+        for pool_id in ids:
+            try:
+                await pool_refresh.refresh_pool(pool_id)
+            except Exception:
+                pass  # next cycle retries; refresh already never-raises for fetch
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()
     config.seed_settings()
+    task = asyncio.create_task(_daily_refresh())
     yield
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
 
 
 app = FastAPI(lifespan=lifespan)
@@ -330,6 +352,130 @@ async def progress(type: str, tmdb: int | None = None, tvdb: int | None = None,
         return {**base, "landed": None}
     async with sonarr.make_client() as c:
         return await sonarr.progress(c, tvdb, title, year)
+
+
+class PoolIn(BaseModel):
+    name: str
+    media_type: str
+    source: str
+    config: dict
+
+
+@app.get("/api/pools")
+def list_pools():
+    conn = db.get_conn()
+    rows = [dict(r) for r in conn.execute(
+        "SELECT p.*, (SELECT COUNT(*) FROM items i WHERE i.pool_id=p.id)"
+        " AS item_count FROM pools p ORDER BY p.id")]
+    conn.close()
+    return rows
+
+
+@app.post("/api/pools", status_code=201, dependencies=[Depends(require_admin)])
+def create_pool(body: PoolIn):
+    if body.media_type not in ("movie", "tv") or \
+            body.source not in ("custom", "tmdb", "trakt"):
+        raise HTTPException(422, "bad_pool")
+    if body.source == "trakt" and not config.resolve("trakt_client_id"):
+        raise HTTPException(422, "trakt_unconfigured")
+    conn = db.get_conn()
+    cur = conn.execute(
+        "INSERT INTO pools(name, media_type, source, config) VALUES (?,?,?,?)",
+        (body.name, body.media_type, body.source, json.dumps(body.config)))
+    conn.commit()
+    pool_id = cur.lastrowid
+    conn.close()
+    return {"id": pool_id}
+
+
+@app.delete("/api/pools/{pool_id}", dependencies=[Depends(require_admin)])
+def delete_pool(pool_id: int):
+    conn = db.get_conn()
+    conn.execute("DELETE FROM items WHERE pool_id=?", (pool_id,))
+    conn.execute("DELETE FROM pools WHERE id=?", (pool_id,))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+@app.post("/api/pools/{pool_id}/activate", dependencies=[Depends(require_admin)])
+def activate_pool(pool_id: int):
+    conn = db.get_conn()
+    row = conn.execute("SELECT media_type FROM pools WHERE id=?",
+                       (pool_id,)).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "pool_not_found")
+    conn.execute("UPDATE pools SET active=0 WHERE media_type=?",
+                 (row["media_type"],))
+    conn.execute("UPDATE pools SET active=1 WHERE id=?", (pool_id,))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+@app.post("/api/pools/{pool_id}/refresh", dependencies=[Depends(require_admin)])
+async def refresh_pool_route(pool_id: int):
+    return await pool_refresh.refresh_pool(pool_id)
+
+
+@app.post("/api/pools/import", dependencies=[Depends(require_admin)])
+async def import_pool(pool_id: int = Form(...), file: UploadFile = File(...)):
+    conn = db.get_conn()
+    pool = conn.execute("SELECT * FROM pools WHERE id=?", (pool_id,)).fetchone()
+    if not pool:
+        conn.close()
+        raise HTTPException(404, "pool_not_found")
+    try:
+        rows = custom_pool.parse(file.filename or "list.csv", await file.read())
+    except ValueError:
+        conn.close()
+        raise HTTPException(422, "bad_format")
+    unresolved = []
+    async with tmdb_pool.make_client() as client:
+        for r in rows:
+            if not r.get("tmdb_id"):
+                r["tmdb_id"] = await tmdb_pool.search(
+                    client, r["title"], r.get("year"), pool["media_type"])
+                if not r["tmdb_id"]:
+                    unresolved.append(r["title"])
+    # dedupe NULL-tmdb rows on normalized (title, year) — UNIQUE won't
+    seen_keys_, deduped = set(), []
+    for r in rows:
+        k = ("id", r["tmdb_id"]) if r["tmdb_id"] else \
+            ("t", db.normalize(r["title"]), r.get("year"))
+        if k in seen_keys_:
+            continue
+        seen_keys_.add(k)
+        deduped.append(r)
+    cfg = json.loads(pool["config"])
+    cfg["items"] = deduped
+    conn.execute("UPDATE pools SET config=? WHERE id=?",
+                 (json.dumps(cfg), pool_id))
+    conn.commit()
+    conn.close()
+    await pool_refresh.refresh_pool(pool_id)
+    return {"imported": len(deduped), "unresolved": unresolved}
+
+
+@app.get("/api/pool")
+def get_pool(stream: str):
+    conn = db.get_conn()
+    pool = conn.execute(
+        "SELECT id FROM pools WHERE media_type=? AND active=1",
+        (stream,)).fetchone()
+    if not pool:
+        conn.close()
+        return []
+    items = []
+    for r in conn.execute("SELECT * FROM items WHERE pool_id=? ORDER BY rank",
+                          (pool["id"],)):
+        d = dict(r)
+        d["genres"] = json.loads(d["genres"]) if d["genres"] else []
+        d["item_key"] = db.item_key(d["tmdb_id"], d["title"], d["year"])
+        items.append(d)
+    conn.close()
+    return items
 
 
 static_dir = os.environ.get("STATIC_DIR", "static")

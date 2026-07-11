@@ -2,6 +2,12 @@ import csv
 import io
 import json
 
+import httpx
+
+
+def make_client() -> httpx.AsyncClient:
+    return httpx.AsyncClient()
+
 
 def parse(filename: str, data: bytes) -> list[dict]:
     text = data.decode("utf-8-sig")

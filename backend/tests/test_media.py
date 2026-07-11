@@ -184,3 +184,18 @@ def test_plex_recent_watches_never_raises(db_file):
     c2 = httpx.AsyncClient(transport=httpx.MockTransport(bad),
                            base_url="http://plex:32400")
     assert asyncio.run(plex.recent_watches(c2, "2026-07-12T00:00:00Z")) == []
+
+
+def test_plex_recent_watches_skips_malformed_entry_keeps_batch(db_file):
+    history = [
+        {"ratingKey": "9", "type": "episode", "viewedAt": 1783843200,
+         "accountID": 1},                      # episode with NO grandparentRatingKey
+        {"ratingKey": "42", "type": "movie", "viewedAt": 1783843200,
+         "accountID": 1},
+    ]
+    accounts = [{"id": 1, "name": "tim"}]
+    meta = {"42": {"title": "The Matrix", "year": 1999,
+                   "Guid": [{"id": "tmdb://603"}]}}
+    plays = asyncio.run(plex.recent_watches(
+        _plex_rw_client(history, accounts, meta), "2026-07-12T00:00:00Z"))
+    assert [p["title"] for p in plays] == ["The Matrix"]   # movie survived; episode skipped

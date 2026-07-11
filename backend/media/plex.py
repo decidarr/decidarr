@@ -107,14 +107,17 @@ async def recent_watches(client, since):
         out, meta_cache = [], {}
         for e in fresh:
             is_episode = e["type"] == "episode"
-            key = str(e.get("grandparentRatingKey") if is_episode
-                      else e.get("ratingKey") or "")
+            key = str((e.get("grandparentRatingKey") if is_episode
+                       else e.get("ratingKey")) or "")
             if not key:
                 continue
             if key not in meta_cache:
-                m = await client.get(f"/library/metadata/{key}")
-                m.raise_for_status()
-                metas = (m.json().get("MediaContainer") or {}).get("Metadata") or []
+                try:
+                    m = await client.get(f"/library/metadata/{key}")
+                    m.raise_for_status()
+                    metas = (m.json().get("MediaContainer") or {}).get("Metadata") or []
+                except (httpx.HTTPError, ValueError):
+                    continue          # bad/deleted entry — skip it, keep the batch
                 if not metas:
                     continue
                 meta_cache[key] = metas[0]

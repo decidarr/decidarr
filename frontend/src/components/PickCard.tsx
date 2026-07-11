@@ -20,14 +20,16 @@ export interface PickCardProps {
    * tonight — Stage uses this to sass the toast and trigger a re-spin. */
   onVetoed: (remaining: number) => void;
   /** Called after `postWatch` commits this item as tonight's pick
-   * (available-now or freshly requested) — Stage/App invalidate the
-   * `["state"]` query so TonightCard picks it up. */
-  onReplaced: () => void;
+   * (available-now or freshly requested), via either the initial commit
+   * or the replace:true retry. Stage resets to the idle wheel and
+   * invalidates `["state"]` so ONLY TonightCard represents the committed
+   * pick (one card, one Progress watcher). */
+  onCommitted: () => void;
   /** "Seen it" already watched this one — re-spin, same beat as veto. */
   onSeenIt?: () => void;
 }
 
-export function PickCard({ item, onVetoed, onReplaced, onSeenIt }: PickCardProps) {
+export function PickCard({ item, onVetoed, onCommitted, onSeenIt }: PickCardProps) {
   const { playerId, stream, blind } = useSession();
   const queryClient = useQueryClient();
 
@@ -122,13 +124,14 @@ export function PickCard({ item, onVetoed, onReplaced, onSeenIt }: PickCardProps
         title: item.title, year: item.year, tmdb_id: item.tmdb_id, replace,
       });
       setConfirmReplace(false);
-      onReplaced();
-      queryClient.invalidateQueries({ queryKey: ["status", stream, item.item_key] });
+      // Deep link / requested toast BEFORE handing off — onCommitted resets
+      // the Stage to idle, which unmounts this card.
       if (r.verdict === "available") {
         if (r.deep_link) window.open(r.deep_link, "_blank", "noopener");
       } else if (r.requested) {
         toast(S.watch.requested);
       }
+      onCommitted();
     } catch (e) {
       if (e instanceof ApiError && e.detail === "pending_pick") {
         setConfirmReplace(true);

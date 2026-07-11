@@ -211,7 +211,18 @@ export function Stage({
               respin();
             }}
             onSeenIt={respin}
-            onReplaced={() => queryClient.invalidateQueries({ queryKey: ["state"] })}
+            onCommitted={() => {
+              // Committing hands the pick off to TonightCard (which mounts
+              // above the Stage from current_picks). The Stage must return
+              // to the idle wheel *beneath* it — otherwise both cards show
+              // the same item and, on the summon path, mount two Progress
+              // pollers for the same download. Go through clearTimers so no
+              // land/shuffle timer leaks (same discipline as stream-switch).
+              clearTimers();
+              setPhase({ kind: "idle" });
+              setLive("");
+              queryClient.invalidateQueries({ queryKey: ["state"] });
+            }}
           />
         )}
       </div>

@@ -74,13 +74,19 @@ export function Progress({ stream, tmdb_id, tvdb_id, title, year, onDone }: Prog
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream, tmdb_id, tvdb_id, title, year]);
 
-  // Mount: first poll immediately, then every PROGRESS_POLL_MS.
+  // Mount: first poll immediately, then every PROGRESS_POLL_MS — but only
+  // if the tab is actually visible. If we mount while backgrounded (app
+  // restored into a background tab, or TonightCard remounting Progress
+  // while hidden), stay idle; the visibilitychange/focus handler resumes
+  // polling the moment the tab is shown.
   useEffect(() => {
     pollCountRef.current = 0;
     searchingSinceRef.current = null;
     doneFiredRef.current = false;
-    poll();
-    intervalRef.current = window.setInterval(poll, PROGRESS_POLL_MS);
+    if (!document.hidden) {
+      poll();
+      intervalRef.current = window.setInterval(poll, PROGRESS_POLL_MS);
+    }
     return stopInterval;
   }, [poll]);
 

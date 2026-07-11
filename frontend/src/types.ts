@@ -216,6 +216,9 @@ export interface ConnectionField {
   value: string | null;
   masked: boolean;
   env: boolean;
+  /** Present for fields whose raw value is never returned (e.g. admin_pin):
+   *  whether a value is currently configured. */
+  set?: boolean;
 }
 
 export type ConnectionsBundle = Record<string, ConnectionField>;

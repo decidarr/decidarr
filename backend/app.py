@@ -3,7 +3,8 @@ import json
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import (APIRouter, Depends, FastAPI, File, Form, Header,
+                     HTTPException, UploadFile)
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -46,8 +47,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+URL_BASE = (os.environ.get("URL_BASE") or "").rstrip("/")  # "" or "/decidarr"
+api = APIRouter()
 
-@app.get("/api/health")
+
+@api.get("/api/health")
 def health():
     conn = db.get_conn()
     pool_flags = {
@@ -67,7 +71,7 @@ def health():
     }
 
 
-@app.get("/api/state")
+@api.get("/api/state")
 def state():
     conn = db.get_conn()
     players = [dict(r) for r in conn.execute(
@@ -98,7 +102,7 @@ def state():
     return out
 
 
-@app.get("/api/stats")
+@api.get("/api/stats")
 def stats():
     conn = db.get_conn()
     result = db.stats(conn)
@@ -117,7 +121,7 @@ class PlayerIn(BaseModel):
     emoji: str | None = None
 
 
-@app.get("/api/players")
+@api.get("/api/players")
 def list_players():
     conn = db.get_conn()
     rows = [dict(r) for r in conn.execute(
@@ -126,7 +130,7 @@ def list_players():
     return rows
 
 
-@app.post("/api/players", status_code=201, dependencies=[Depends(require_admin)])
+@api.post("/api/players", status_code=201, dependencies=[Depends(require_admin)])
 def create_player(body: PlayerIn):
     conn = db.get_conn()
     dup = conn.execute("SELECT 1 FROM players WHERE name=?", (body.name,)).fetchone()
@@ -141,7 +145,7 @@ def create_player(body: PlayerIn):
     return {"id": pid, "name": body.name, "emoji": body.emoji, "active": 1}
 
 
-@app.delete("/api/players/{player_id}", dependencies=[Depends(require_admin)])
+@api.delete("/api/players/{player_id}", dependencies=[Depends(require_admin)])
 def deactivate_player(player_id: int):
     conn = db.get_conn()
     conn.execute("UPDATE players SET active=0 WHERE id=?", (player_id,))
@@ -159,7 +163,7 @@ class EventIn(BaseModel):
     action: str
 
 
-@app.post("/api/event")
+@api.post("/api/event")
 def post_event(body: EventIn):
     if body.action not in ("spun", "watched", "seen"):
         raise HTTPException(422, "action_not_allowed")
@@ -180,7 +184,7 @@ class VetoIn(BaseModel):
     year: int | None = None
 
 
-@app.post("/api/veto")
+@api.post("/api/veto")
 def post_veto(body: VetoIn):
     if body.media_type not in ("movie", "tv"):
         raise HTTPException(422, "bad_media_type")
@@ -201,7 +205,7 @@ class ResetSeenIn(BaseModel):
     stream: str | None = None
 
 
-@app.post("/api/reset-seen", dependencies=[Depends(require_admin)])
+@api.post("/api/reset-seen", dependencies=[Depends(require_admin)])
 def reset_seen(body: ResetSeenIn):
     conn = db.get_conn()
     if body.stream:
@@ -216,7 +220,7 @@ def reset_seen(body: ResetSeenIn):
     return {"ok": True, "deleted": deleted}
 
 
-@app.delete("/api/pick")
+@api.delete("/api/pick")
 def clear_pick(stream: str):
     if stream not in ("movie", "tv"):
         raise HTTPException(422, "bad_stream")
@@ -237,7 +241,7 @@ class DuelWinIn(BaseModel):
     replace: bool = False
 
 
-@app.post("/api/duel/win")
+@api.post("/api/duel/win")
 def duel_win(body: DuelWinIn):
     if body.media_type not in ("movie", "tv"):
         raise HTTPException(422, "bad_media_type")
@@ -275,7 +279,7 @@ async def _media_overlay(media_type, title, year, tmdb_id):
             "deep_link": backend.deep_link(native_id) if native_id else None}
 
 
-@app.get("/api/status")
+@api.get("/api/status")
 async def status(item_key: str, type: str, title: str, year: int | None = None):
     if type not in ("movie", "tv"):
         raise HTTPException(422, "bad_media_type")
@@ -300,7 +304,7 @@ class WatchIn(BaseModel):
     replace: bool = False
 
 
-@app.post("/api/watch")
+@api.post("/api/watch")
 async def watch(body: WatchIn):
     if body.media_type not in ("movie", "tv"):
         raise HTTPException(422, "bad_media_type")
@@ -345,7 +349,7 @@ async def watch(body: WatchIn):
     return {"verdict": "pending", "requested": True}
 
 
-@app.get("/api/progress")
+@api.get("/api/progress")
 async def progress(type: str, tmdb: int | None = None, tvdb: int | None = None,
                    title: str | None = None, year: int | None = None):
     if type not in ("movie", "tv"):
@@ -369,7 +373,7 @@ class PoolIn(BaseModel):
     config: dict
 
 
-@app.get("/api/pools")
+@api.get("/api/pools")
 def list_pools():
     conn = db.get_conn()
     rows = [dict(r) for r in conn.execute(
@@ -379,7 +383,7 @@ def list_pools():
     return rows
 
 
-@app.post("/api/pools", status_code=201, dependencies=[Depends(require_admin)])
+@api.post("/api/pools", status_code=201, dependencies=[Depends(require_admin)])
 def create_pool(body: PoolIn):
     if body.media_type not in ("movie", "tv") or \
             body.source not in ("custom", "tmdb", "trakt"):
@@ -396,7 +400,7 @@ def create_pool(body: PoolIn):
     return {"id": pool_id}
 
 
-@app.delete("/api/pools/{pool_id}", dependencies=[Depends(require_admin)])
+@api.delete("/api/pools/{pool_id}", dependencies=[Depends(require_admin)])
 def delete_pool(pool_id: int):
     conn = db.get_conn()
     conn.execute("DELETE FROM items WHERE pool_id=?", (pool_id,))
@@ -406,7 +410,7 @@ def delete_pool(pool_id: int):
     return {"ok": True}
 
 
-@app.post("/api/pools/{pool_id}/activate", dependencies=[Depends(require_admin)])
+@api.post("/api/pools/{pool_id}/activate", dependencies=[Depends(require_admin)])
 def activate_pool(pool_id: int):
     conn = db.get_conn()
     row = conn.execute("SELECT media_type FROM pools WHERE id=?",
@@ -422,12 +426,12 @@ def activate_pool(pool_id: int):
     return {"ok": True}
 
 
-@app.post("/api/pools/{pool_id}/refresh", dependencies=[Depends(require_admin)])
+@api.post("/api/pools/{pool_id}/refresh", dependencies=[Depends(require_admin)])
 async def refresh_pool_route(pool_id: int):
     return await pool_refresh.refresh_pool(pool_id)
 
 
-@app.post("/api/pools/import", dependencies=[Depends(require_admin)])
+@api.post("/api/pools/import", dependencies=[Depends(require_admin)])
 async def import_pool(pool_id: int = Form(...), file: UploadFile = File(...)):
     conn = db.get_conn()
     pool = conn.execute("SELECT * FROM pools WHERE id=?", (pool_id,)).fetchone()
@@ -466,7 +470,7 @@ async def import_pool(pool_id: int = Form(...), file: UploadFile = File(...)):
     return {"imported": len(deduped), "unresolved": unresolved}
 
 
-@app.get("/api/pool")
+@api.get("/api/pool")
 def get_pool(stream: str):
     conn = db.get_conn()
     pool = conn.execute(
@@ -491,10 +495,16 @@ SECRET_KEYS = {k for k in config.SETTING_ENV if
 CONNECTION_KEYS = set(config.SETTING_ENV) | {"veto_tokens", "admin_pin"}
 
 
-@app.get("/api/connections")
+@api.get("/api/connections")
 def get_connections():
     out = {}
     for key in sorted(CONNECTION_KEYS):
+        if key == "admin_pin":
+            # never return the PIN value (even partially masked) on this
+            # ungated read route — only whether one is set.
+            out[key] = {"value": None, "set": bool(config.get_setting(key)),
+                        "masked": True, "env": config.is_env_set(key)}
+            continue
         val = config.resolve(key) if key in config.SETTING_ENV \
             else config.get_setting(key)
         masked = key in SECRET_KEYS
@@ -505,7 +515,7 @@ def get_connections():
     return out
 
 
-@app.put("/api/connections", dependencies=[Depends(require_admin)])
+@api.put("/api/connections", dependencies=[Depends(require_admin)])
 def put_connections(body: dict):
     unknown = [k for k in body if k not in CONNECTION_KEYS]
     if unknown:
@@ -530,7 +540,7 @@ TEST_PROBES = {
 }
 
 
-@app.post("/api/connections/{service}/test",
+@api.post("/api/connections/{service}/test",
           dependencies=[Depends(require_admin)])
 async def test_connection(service: str):
     import importlib
@@ -552,7 +562,9 @@ async def test_connection(service: str):
     return {"ok": True, "message": "Connection successful"}
 
 
+app.include_router(api, prefix=URL_BASE)
+
 static_dir = os.environ.get("STATIC_DIR", "static")
 if os.path.isdir(static_dir):
-    app.mount(os.environ.get("URL_BASE", "") or "/",
+    app.mount(URL_BASE or "/",
               StaticFiles(directory=static_dir, html=True), name="static")

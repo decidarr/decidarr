@@ -1,3 +1,5 @@
+import json
+
 import httpx
 import config
 
@@ -24,6 +26,14 @@ def test_connections_put_writes_and_skips_env_keys(client, monkeypatch):
 
 def test_connections_put_unknown_key_422(client):
     assert client.put("/api/connections", json={"hacker": "x"}).status_code == 422
+
+
+def test_connections_read_never_exposes_admin_pin(client):
+    config.set_setting("admin_pin", "1234")
+    body = client.get("/api/connections").json()
+    assert "34" not in json.dumps(body["admin_pin"])
+    assert body["admin_pin"]["set"] is True
+    assert body["admin_pin"]["value"] is None
 
 
 def test_plex_test_caches_machine_identifier(client, monkeypatch):

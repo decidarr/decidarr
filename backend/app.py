@@ -98,6 +98,14 @@ def state():
     return out
 
 
+@app.get("/api/stats")
+def stats():
+    conn = db.get_conn()
+    result = db.stats(conn)
+    conn.close()
+    return result
+
+
 def require_admin(x_admin_pin: str | None = Header(None)):
     pin = config.get_setting("admin_pin")
     if pin and x_admin_pin != pin:

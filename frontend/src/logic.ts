@@ -41,3 +41,15 @@ export const maskTitle = (_title: string) => "▓".repeat(MASK_WIDTH);
 export const spinDurations = (reducedMotion: boolean) =>
   reducedMotion ? { spin: 300, respin: 300, fate: 300 }
                 : { spin: 2500, respin: 1200, fate: 1500 };
+
+/** Count of non-default filter *fields* — drives the Header's "Filters · N"
+ * badge. Runtime min/max count as a single field (one dual-handle range),
+ * matching the player's mental model of "I set a runtime filter". */
+export function activeFilterCount(f: Filters): number {
+  let n = 0;
+  if ((f.runtimeMin ?? 0) !== 0 || (f.runtimeMax ?? Infinity) !== Infinity) n++;
+  if (f.genres.length > 0) n++;
+  if (f.decade !== null) n++;
+  if (f.includeSeen) n++;
+  return n;
+}

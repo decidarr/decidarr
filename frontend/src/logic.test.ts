@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { eligibleItems, maskTitle, pickWinner, verdictToAction } from "./logic";
+import {
+  activeFilterCount,
+  eligibleItems,
+  maskTitle,
+  pickWinner,
+  verdictToAction,
+} from "./logic";
 import type { PoolItem } from "./types";
 
 const item = (over: Partial<PoolItem>): PoolItem => ({
@@ -57,5 +63,24 @@ describe("maskTitle", () => {
   it("uses a fixed width so length never leaks", () => {
     expect(maskTitle("It")).toBe(maskTitle("The Assassination of Jesse James"));
     expect(maskTitle("It")).toMatch(/^▓+$/);
+  });
+});
+
+describe("activeFilterCount", () => {
+  it("is zero for the default filters", () => {
+    expect(activeFilterCount(F)).toBe(0);
+  });
+  it("counts runtime min/max as a single field", () => {
+    expect(activeFilterCount({ ...F, runtimeMin: 40 })).toBe(1);
+    expect(activeFilterCount({ ...F, runtimeMax: 110 })).toBe(1);
+    expect(activeFilterCount({ ...F, runtimeMin: 40, runtimeMax: 110 })).toBe(1);
+  });
+  it("counts genres, decade, and includeSeen independently", () => {
+    expect(activeFilterCount({ ...F, genres: ["Drama"] })).toBe(1);
+    expect(activeFilterCount({ ...F, decade: 1990 })).toBe(1);
+    expect(activeFilterCount({ ...F, includeSeen: true })).toBe(1);
+    expect(activeFilterCount({
+      ...F, runtimeMin: 40, genres: ["Drama"], decade: 1990, includeSeen: true,
+    })).toBe(4);
   });
 });

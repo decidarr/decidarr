@@ -10,10 +10,58 @@ export const S = {
   streams: {
     movie: "Movies",
     tv: "TV",
+    groupLabel: "Stream",
+  },
+
+  // --- announced the instant a spin starts (theater vs. assistive tech) --
+  spinResult: (title: string) => `Landed on ${title}.`,
+
+  // --- app shell / nav -----------------------------------------------
+  nav: {
+    spin: "Spin",
+    history: "History",
+    board: "Board",
+    settings: "Settings",
+  },
+
+  // --- identity gate ---------------------------------------------------
+  identity: {
+    title: "Who's spinning?",
+    empty: "No players yet. Ask an admin to add one in Settings.",
+    change: "Switch player",
+  },
+
+  // --- header / filters sheet ------------------------------------------
+  filters: {
+    title: "Filters",
+    button: (n: number) => (n > 0 ? `Filters · ${n}` : "Filters"),
+    runtime: "Runtime",
+    runtimeMinLabel: "Minimum runtime",
+    runtimeMaxLabel: "Maximum runtime",
+    presets: {
+      schoolNight: "School Night",
+      committed: "Committed",
+    },
+    genres: "Genres",
+    decade: "Decade",
+    anyDecade: "Any decade",
+    includeSeen: "Include already seen",
+    blindMode: "Blind mode",
+    reset: "Reset",
+    done: "Done",
+  },
+
+  // --- spin stage --------------------------------------------------------
+  spin: {
+    button: "Spin",
+    spinning: "Spinning…",
+    again: "Spin again",
+    duel: "Duel",
   },
 
   // --- empty / unconfigured states --------------------------------------
   emptyWheel: {
+    title: "Empty wheel",
     noPool: "No active pool for this stream yet. Point an admin at Settings.",
     poolEmpty:
       "The pool's empty. Every pick's been watched, vetoed into oblivion, or nobody's loaded one.",
@@ -21,6 +69,11 @@ export const S = {
       "You've burned through the whole pool. Flip on \"include seen\" or feed it something new.",
     loading: "Shuffling the deck…",
     error: "Couldn't reach the pool. Check the connection and try again.",
+    fixes: {
+      resetFilters: "Reset filters",
+      includeSeen: "Include seen",
+      openSettings: "Open Settings",
+    },
   },
 
   // --- veto sass ----------------------------------------------------------

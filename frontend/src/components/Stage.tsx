@@ -14,12 +14,18 @@ import type { PoolItem } from "../types";
 type Phase =
   | { kind: "idle" }
   | { kind: "empty" }
+  | { kind: "loading" }
   | { kind: "spinning"; winner: PoolItem; candidates: PoolItem[] }
   | { kind: "landed"; winner: PoolItem };
 
 interface StageProps {
   pool: PoolItem[];
   seen: string[];
+  /** True while the pool query for the current stream is still in flight. */
+  poolLoading: boolean;
+  /** True when the current stream has an active pool configured (so an empty
+   * `pool` during load means "still fetching", not "genuinely empty"). */
+  hasActivePool: boolean;
   onOpenSettings: () => void;
   onLaunchDuel?: () => void;
 }
@@ -30,27 +36,54 @@ function reducedMotion(): boolean {
     : false;
 }
 
-export function Stage({ pool, seen, onOpenSettings, onLaunchDuel }: StageProps) {
+export function Stage({
+  pool,
+  seen,
+  poolLoading,
+  hasActivePool,
+  onOpenSettings,
+  onLaunchDuel,
+}: StageProps) {
   const { playerId, stream, filters, resetFilters, setFilters } = useSession();
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [live, setLive] = useState("");
   const [displayItem, setDisplayItem] = useState<PoolItem | null>(null);
   const reduced = useRef(reducedMotion()).current;
   const shuffleTimer = useRef<number | null>(null);
+  const landTimer = useRef<number | null>(null);
 
+  const clearTimers = () => {
+    if (shuffleTimer.current != null) window.clearTimeout(shuffleTimer.current);
+    if (landTimer.current != null) window.clearTimeout(landTimer.current);
+    shuffleTimer.current = null;
+    landTimer.current = null;
+  };
+
+  // Clear any in-flight spin timers on unmount so setPhase never fires on a
+  // dead component.
+  useEffect(() => clearTimers, []);
+
+  // "Movies or TV, never mixed": switching streams must not leave a stale
+  // pick (or a mid-spin animation) on the stage. Reset to idle and kill any
+  // in-flight timers whenever the stream changes.
   useEffect(() => {
-    return () => {
-      if (shuffleTimer.current != null) window.clearTimeout(shuffleTimer.current);
-    };
-  }, []);
+    clearTimers();
+    setPhase({ kind: "idle" });
+    setLive("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stream]);
 
   function spin() {
     const candidates = eligibleItems(pool, filters, seen);
     const winner = pickWinner(candidates);
     if (!winner) {
-      setPhase({ kind: "empty" });
+      // Distinguish "pool still fetching" from "pool genuinely has nothing
+      // eligible" — a Spin tap during the load window shows a skeleton, not
+      // the empty-wheel dead-end.
+      setPhase(poolLoading && hasActivePool ? { kind: "loading" } : { kind: "empty" });
       return;
     }
+    clearTimers();
     setPhase({ kind: "spinning", winner, candidates });
     setLive(S.spinResult(winner.title)); // aria-live gets it immediately
     if (playerId != null) {
@@ -66,7 +99,10 @@ export function Stage({ pool, seen, onOpenSettings, onLaunchDuel }: StageProps) 
         // spin itself from landing.
       });
     }
-    window.setTimeout(() => setPhase({ kind: "landed", winner }), spinDurations(reduced).spin);
+    landTimer.current = window.setTimeout(
+      () => setPhase({ kind: "landed", winner }),
+      spinDurations(reduced).spin,
+    );
   }
 
   // Poster-shuffle: cycles the displayed poster through candidates with a
@@ -121,6 +157,13 @@ export function Stage({ pool, seen, onOpenSettings, onLaunchDuel }: StageProps) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, reduced]);
 
+  // If the player tapped Spin while the pool was still fetching, honor that
+  // intent: once the data lands, run the spin they asked for.
+  useEffect(() => {
+    if (phase.kind === "loading" && !poolLoading) spin();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase.kind, poolLoading]);
+
   const fixResetFilters = () => {
     resetFilters();
     setPhase({ kind: "idle" });
@@ -140,6 +183,8 @@ export function Stage({ pool, seen, onOpenSettings, onLaunchDuel }: StageProps) 
         {phase.kind === "empty" && <EmptyWheel pool={pool} filters={filters}
           onResetFilters={fixResetFilters} onIncludeSeen={fixIncludeSeen}
           onOpenSettings={onOpenSettings} />}
+
+        {phase.kind === "loading" && <LoadingPoster />}
 
         {phase.kind === "idle" && <IdlePoster />}
 
@@ -189,6 +234,10 @@ export function Stage({ pool, seen, onOpenSettings, onLaunchDuel }: StageProps) 
 
 function IdlePoster() {
   return <div className="poster-box poster-box--placeholder" aria-hidden="true" />;
+}
+
+function LoadingPoster() {
+  return <div className="poster-box skeleton" aria-label={S.emptyWheel.loading} />;
 }
 
 function PosterBox({ item, spinning }: { item: PoolItem | null; spinning?: boolean }) {

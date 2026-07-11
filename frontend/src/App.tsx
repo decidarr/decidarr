@@ -54,6 +54,7 @@ function AppShell() {
   const pool = poolQuery.data ?? [];
   const seen = state.seen[stream] ?? [];
   const filterCount = activeFilterCount(filters);
+  const hasActivePool = state.pools[stream] != null;
 
   return (
     <div className="app">
@@ -71,7 +72,13 @@ function AppShell() {
 
       <main className="app__main">
         {view === "spin" && (
-          <Stage pool={pool} seen={seen} onOpenSettings={() => setView("settings")} />
+          <Stage
+            pool={pool}
+            seen={seen}
+            poolLoading={poolQuery.isLoading}
+            hasActivePool={hasActivePool}
+            onOpenSettings={() => setView("settings")}
+          />
         )}
         {view === "history" && (
           <PlaceholderPanel title={S.history.title} body={S.history.empty} />

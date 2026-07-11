@@ -122,11 +122,13 @@ button {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--r-chip);
-  padding: 2px;
+  /* Horizontal-only inset keeps the control's border-box at 44px+2px border
+     so it lines up with the 44px identity pill / filter button beside it. */
+  padding: 0 2px;
 }
 
 .segmented__option {
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 var(--s3);
   border: none;
   background: transparent;
@@ -191,7 +193,7 @@ button {
 .sheet-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(16, 20, 26, 0.72);
+  background: color-mix(in srgb, var(--ink) 72%, transparent);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -374,7 +376,7 @@ button {
 }
 
 .chip {
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 var(--s3);
   background: var(--panel);
   border: 1px solid var(--line);
@@ -467,7 +469,11 @@ button {
 .poster-box__scrim {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(16, 20, 26, 0.85), transparent 55%);
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--ink) 85%, transparent),
+    transparent 55%
+  );
   pointer-events: none;
 }
 
@@ -485,7 +491,7 @@ button {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(232, 224, 204, 0.08),
+    color-mix(in srgb, var(--cream) 8%, transparent),
     transparent
   );
   animation: shimmer 1.6s infinite;

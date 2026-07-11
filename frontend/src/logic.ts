@@ -5,6 +5,9 @@ export function eligibleItems(items: PoolItem[], f: Filters,
   const seenSet = new Set(seen);
   return items.filter((it) => {
     if (!f.includeSeen && seenSet.has(it.item_key)) return false;
+    // A localStorage round-trip can turn Infinity into null
+    // (JSON.stringify(Infinity) === "null"), so default the bounds here —
+    // don't "simplify" these coalesces away.
     const min = f.runtimeMin ?? 0;
     const max = f.runtimeMax ?? Infinity;
     if (it.runtime != null && (it.runtime < min || it.runtime > max)) return false;

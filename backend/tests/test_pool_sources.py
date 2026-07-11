@@ -29,6 +29,16 @@ def test_custom_parse_garbage_raises():
         custom.parse("list.json", b"not json at all {{{")
 
 
+def test_custom_parse_json_missing_title_raises():
+    with pytest.raises(ValueError):
+        custom.parse("list.json", b'[{"name":"Heat","release_year":1995}]')
+
+
+def test_custom_parse_json_non_dict_items_raises():
+    with pytest.raises(ValueError):
+        custom.parse("list.json", b'["foo","bar"]')
+
+
 def test_tmdb_fetch_filters_media_type_and_ranks():
     def handler(req):
         assert req.url.path == "/3/list/8296268"
@@ -74,6 +84,23 @@ def test_tmdb_details_non_json_200_returns_empty():
     c = httpx.AsyncClient(transport=httpx.MockTransport(handler),
                           base_url="https://api.themoviedb.org")
     assert asyncio.run(tmdb.details(c, 1, "movie")) == {}
+
+
+def test_tmdb_search_non_json_200_returns_none():
+    def handler(req):
+        return httpx.Response(200, content=b"<html>err</html>",
+                              headers={"content-type": "text/html"})
+    c = httpx.AsyncClient(transport=httpx.MockTransport(handler),
+                          base_url="https://api.themoviedb.org")
+    assert asyncio.run(tmdb.search(c, "Heat", 1995, "movie")) is None
+
+
+def test_tmdb_search_failure_returns_none():
+    def handler(req):
+        return httpx.Response(500)
+    c = httpx.AsyncClient(transport=httpx.MockTransport(handler),
+                          base_url="https://api.themoviedb.org")
+    assert asyncio.run(tmdb.search(c, "Heat", 1995, "movie")) is None
 
 
 def test_trakt_fetch_shapes_shows():

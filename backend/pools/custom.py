@@ -11,6 +11,8 @@ def parse(filename: str, data: bytes) -> list[dict]:
             assert isinstance(rows, list)
         except (json.JSONDecodeError, AssertionError):
             raise ValueError("bad_format")
+        if not all(isinstance(r, dict) and "title" in r for r in rows):
+            raise ValueError("bad_format")
         return [{"title": r["title"], "year": r.get("year"),
                  "tmdb_id": r.get("tmdb_id")} for r in rows]
     out = []

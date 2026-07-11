@@ -1,10 +1,20 @@
-.claude/settings.local.json
+# Local dev tooling (launch.json for browser preview, settings.local.json) —
+# not part of the shipped app.
+.claude/
+
 __pycache__/
 *.pyc
 .venv/
+.pytest_cache/
 node_modules/
 dist/
 .DS_Store
 data/
 *.tsbuildinfo
 vite.config.ts.timestamp-*
+
+# Container/dev artifacts — built assets get copied here by the Dockerfile,
+# never committed. .gitkeep preserves the directory for local `uvicorn`
+# runs without STATIC_DIR set.
+backend/static/*
+!backend/static/.gitkeep

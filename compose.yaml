@@ -1,0 +1,83 @@
+# Decidarr — copy this file, adjust the values below, then:
+#
+#   docker compose up -d
+#
+# Then open http://<host>:5454, add players, pick a pool source, and spin.
+#
+# Everything under Settings → Connections can also be configured from the
+# UI (values persist in SQLite) — these env vars just seed those settings
+# at first startup and override them for compose-first users who never
+# want to open the UI. See README.md for the full degradation matrix:
+# every integration below is optional except TMDB_API_KEY, and Decidarr
+# never 5xxs because an optional integration is missing or unreachable.
+
+services:
+  decidarr:
+    image: decidarr/decidarr:latest
+    # Or build from source instead of pulling the published image:
+    # build: .
+    container_name: decidarr
+    restart: unless-stopped
+    ports:
+      - "5454:5454"
+    volumes:
+      - ./data:/data
+    environment:
+      # Timezone — governs the veto-token day boundary (midnight local time).
+      TZ: Pacific/Auckland
+
+      # SQLite database path inside the container. The /data volume above
+      # must contain (or be able to create) this file.
+      DB_PATH: /data/decidarr.db
+
+      # Optional: serve Decidarr under a subpath behind a reverse proxy,
+      # e.g. URL_BASE=/decidarr. Leave blank to serve at the root.
+      URL_BASE:
+
+      # Overseerr or Jellyseerr — required for the "summon" action (the
+      # request that kicks off a download). Without it, spin/veto/duel
+      # still work; the summon button shows a "configure Overseerr" hint.
+      SEERR_URL:
+      SEERR_API_KEY:
+
+      # Radarr — optional. Powers the live movie download progress bar.
+      # Without it, a static "on its way" message is shown instead.
+      RADARR_URL:
+      RADARR_API_KEY:
+
+      # Sonarr — optional. Powers the live TV download progress bar.
+      # Without it, a static "on its way" message is shown instead.
+      SONARR_URL:
+      SONARR_API_KEY:
+
+      # What a TV summon requests: "first" (Season 1 only, default) or
+      # "all" (every season).
+      TV_REQUEST_SEASONS: first
+
+      # Which media server to check for availability and deep links:
+      # "plex" or "jellyfin". Leave blank to skip and fall back to
+      # Overseerr/Jellyseerr's own availability signal.
+      MEDIA_SERVER:
+
+      # Plex — required fields when MEDIA_SERVER=plex.
+      PLEX_URL:
+      PLEX_TOKEN:
+
+      # Jellyfin — required fields when MEDIA_SERVER=jellyfin.
+      JELLYFIN_URL:
+      JELLYFIN_API_KEY:
+
+      # TMDB — required. Powers pool enrichment (posters, genres, runtime,
+      # year) for every pool source, including Custom and Trakt imports.
+      # Get a free key at https://www.themoviedb.org/settings/api
+      TMDB_API_KEY:
+
+      # Trakt — optional. Only needed if you want to use Trakt lists as a
+      # pool source; without it, the Trakt source is hidden in the pool
+      # picker.
+      TRAKT_CLIENT_ID:
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:5454/api/health')"]
+      interval: 60s
+      timeout: 5s
+      retries: 3

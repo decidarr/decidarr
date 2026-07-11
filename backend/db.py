@@ -173,6 +173,30 @@ def vetoes_used_today(conn, player, tz_name):
     return used
 
 
+class PendingPickError(Exception):
+    pass
+
+
+def upsert_pick(conn, media_type, item_key, title, year, tmdb_id, tvdb_id,
+                picked_by, replace):
+    row = conn.execute("SELECT item_key FROM current_picks WHERE media_type=?",
+                       (media_type,)).fetchone()
+    if row and row["item_key"] != item_key and not replace:
+        raise PendingPickError()
+    conn.execute(
+        "INSERT INTO current_picks"
+        " (media_type,item_key,title,year,tmdb_id,tvdb_id,picked_by,ts)"
+        " VALUES (?,?,?,?,?,?,?,?)"
+        " ON CONFLICT(media_type) DO UPDATE SET"
+        "  item_key=excluded.item_key, title=excluded.title,"
+        "  year=excluded.year, tmdb_id=excluded.tmdb_id,"
+        "  tvdb_id=excluded.tvdb_id, picked_by=excluded.picked_by,"
+        "  ts=excluded.ts",
+        (media_type, item_key, title, year, tmdb_id, tvdb_id, picked_by,
+         utc_now()))
+    conn.commit()
+
+
 def stats(conn):
     out = {"movie": {}, "tv": {}, "combined": {}}
     rows = conn.execute(

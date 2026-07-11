@@ -182,6 +182,40 @@ def reset_seen(body: ResetSeenIn):
     return {"ok": True, "deleted": deleted}
 
 
+@app.delete("/api/pick")
+def clear_pick(stream: str):
+    conn = db.get_conn()
+    conn.execute("DELETE FROM current_picks WHERE media_type=?", (stream,))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+class DuelWinIn(BaseModel):
+    player: int
+    media_type: str
+    item_key: str
+    title: str
+    year: int | None = None
+    tmdb_id: int | None = None
+    replace: bool = False
+
+
+@app.post("/api/duel/win")
+def duel_win(body: DuelWinIn):
+    conn = db.get_conn()
+    try:
+        db.upsert_pick(conn, body.media_type, body.item_key, body.title,
+                       body.year, body.tmdb_id, None, body.player, body.replace)
+    except db.PendingPickError:
+        conn.close()
+        raise HTTPException(409, "pending_pick")
+    db.log_event(conn, body.player, body.media_type, body.item_key,
+                 body.title, body.year, "duel_won")
+    conn.close()
+    return {"ok": True}
+
+
 static_dir = os.environ.get("STATIC_DIR", "static")
 if os.path.isdir(static_dir):
     app.mount(os.environ.get("URL_BASE", "") or "/",

@@ -8,8 +8,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   ApiError, activatePool, createPlayer, createPool, deactivatePlayer,
-  getConnections, importPool, listPlayers, listPools, putConnections,
-  refreshPool, testConnection,
+  getConnections, getHealth, importPool, listPlayers, listPools, patchPlayer,
+  putConnections, refreshPool, testConnection,
 } from "../api";
 import type { PoolRow } from "../api";
 import { formatWhen } from "../logic";
@@ -36,6 +36,8 @@ function pinAwareMessage(detail: string): string {
 export function PlayersSection() {
   const queryClient = useQueryClient();
   const playersQuery = useQuery({ queryKey: ["players"], queryFn: listPlayers });
+  const healthQuery = useQuery({ queryKey: ["health"], queryFn: getHealth });
+  const server = healthQuery.data?.media_server ?? null; // "plex" | "jellyfin" | null
   const [name, setName] = useState("");
   const [emoji, setEmoji] = useState("");
   const [busy, setBusy] = useState(false);
@@ -43,6 +45,20 @@ export function PlayersSection() {
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ["players"] });
     queryClient.invalidateQueries({ queryKey: ["state"] });
+  }
+
+  async function saveMapping(p: Player, raw: string) {
+    const value = raw.trim() || null;
+    const current = (server === "plex" ? p.plex_user : p.jellyfin_user) ?? null;
+    if (!server || value === current) return;
+    try {
+      await withAdminPin(() => patchPlayer(p.id, {
+        [server === "plex" ? "plex_user" : "jellyfin_user"]: value,
+      }));
+      invalidate();
+    } catch {
+      toast(S.common.writeFailed);
+    }
   }
 
   async function add(e: FormEvent) {
@@ -84,6 +100,19 @@ export function PlayersSection() {
           {players.map((p) => (
             <li key={p.id} className="settings-list__row">
               <span>{p.emoji ? `${p.emoji} ${p.name}` : p.name}</span>
+              {server && (
+                <input
+                  className="player-row__mapping"
+                  type="text"
+                  defaultValue={(server === "plex" ? p.plex_user : p.jellyfin_user) ?? ""}
+                  placeholder={server === "plex"
+                    ? S.settings.players.plexUser
+                    : S.settings.players.jellyfinUser}
+                  aria-label={S.settings.players.mappingHint(
+                    server === "plex" ? "Plex" : "Jellyfin")}
+                  onBlur={(e) => saveMapping(p, e.currentTarget.value)}
+                />
+              )}
               <button type="button" className="btn-link" onClick={() => remove(p.id)}>
                 <UserX size={16} aria-hidden="true" />
                 {S.settings.players.deactivate}
@@ -111,6 +140,42 @@ export function PlayersSection() {
           {S.settings.players.add}
         </button>
       </form>
+    </section>
+  );
+}
+
+// --- Auto-log ---------------------------------------------------------------
+
+const AUTOLOG_OFF_VALUES = new Set(["0", "false", "no", "off"]);
+
+export function AutologSection() {
+  const queryClient = useQueryClient();
+  const healthQuery = useQuery({ queryKey: ["health"], queryFn: getHealth });
+  const connectionsQuery = useQuery({ queryKey: ["connections"], queryFn: getConnections });
+  const raw = connectionsQuery.data?.autolog_enabled?.value ?? null;
+  const on = raw === null || !AUTOLOG_OFF_VALUES.has(raw.toLowerCase());
+  const hasServer = !!healthQuery.data?.media_server;
+
+  async function toggle() {
+    try {
+      await withAdminPin(() => putConnections({ autolog_enabled: on ? "false" : "1" }));
+      queryClient.invalidateQueries({ queryKey: ["connections"] });
+      queryClient.invalidateQueries({ queryKey: ["health"] });
+    } catch {
+      toast(S.common.writeFailed);
+    }
+  }
+
+  return (
+    <section className="settings-section">
+      <h3 className="settings-section__title">{S.settings.autolog.title}</h3>
+      <p className="settings-section__caption">
+        {hasServer ? S.settings.autolog.caption : S.settings.autolog.needsServer}
+      </p>
+      <label className="toggle-row">
+        <input type="checkbox" checked={on} disabled={!hasServer} onChange={toggle} />
+        {S.settings.autolog.title}
+      </label>
     </section>
   );
 }
@@ -485,6 +550,7 @@ export function Settings() {
   return (
     <div className="settings-view">
       <PlayersSection />
+      <AutologSection />
       <PoolsSection />
       <ConnectionsSection />
       <p className="settings-footer">{S.attribution.tmdb}</p>

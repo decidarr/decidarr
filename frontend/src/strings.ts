@@ -181,6 +181,7 @@ export const S = {
       requested: "Requested",
     },
     grudgeCount: (n: number) => `Vetoed ${n} time${n === 1 ? "" : "s"}`,
+    autoTag: "auto",
   },
 
   board: {
@@ -248,6 +249,9 @@ export const S = {
       add: "Add player",
       duplicate: "That name's taken.",
       deactivate: "Remove",
+      plexUser: "Plex user",
+      jellyfinUser: "Jellyfin user",
+      mappingHint: (server: string) => `${server} account name — used to credit auto-logged watches.`,
     },
 
     pools: {
@@ -272,6 +276,12 @@ export const S = {
         unresolved > 0
           ? `Imported ${imported}, couldn't match ${unresolved}.`
           : `Imported ${imported}.`,
+    },
+
+    autolog: {
+      title: "Auto-log watches",
+      caption: "When your media server marks a pool item watched, Decidarr logs it — no more tapping after the credits.",
+      needsServer: "Configure a media server (Plex or Jellyfin) to use auto-log.",
     },
 
     connections: {

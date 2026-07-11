@@ -84,7 +84,7 @@ describe("defaultDuelOpponent", () => {
   ];
   const hist = (player: number): HistoryEntry => ({
     ts: "2026-07-11T00:00:00Z", player, player_name: "x", media_type: "movie",
-    item_key: "tmdb:1", title: "x", year: null, action: "watched",
+    item_key: "tmdb:1", title: "x", year: null, action: "watched", source: "user",
   });
 
   it("picks the most recently active other player from history", () => {

@@ -12,6 +12,14 @@ export interface Player {
   /** Present on /api/players; omitted from /api/state's players list
    * (which only ever contains active players). */
   active?: boolean | number;
+  /** v1.2 auto-log account mappings (present on /api/players). */
+  plex_user?: string | null;
+  jellyfin_user?: string | null;
+}
+
+export interface PlayerPatch {
+  plex_user?: string | null;
+  jellyfin_user?: string | null;
 }
 
 export interface PoolItem {
@@ -102,6 +110,7 @@ export interface HistoryEntry {
   title: string;
   year: number | null;
   action: "watched" | "requested";
+  source: "user" | "auto";
 }
 
 export interface GrudgeEntry {

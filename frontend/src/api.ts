@@ -4,6 +4,7 @@ import type {
   EventIn,
   HealthResult,
   PlayerIn,
+  PlayerPatch,
   Player,
   PoolIn,
   PoolItem,
@@ -115,6 +116,9 @@ export const createPlayer = (p: PlayerIn) =>
 
 export const deactivatePlayer = (id: number) =>
   call<{ ok: boolean }>(`/players/${id}`, { method: "DELETE" });
+
+export const patchPlayer = (id: number, patch: PlayerPatch) =>
+  call<Player>(`/players/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
 
 // --- admin: pools ---------------------------------------------------------
 

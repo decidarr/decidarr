@@ -1140,6 +1140,16 @@ button {
   font-size: 0.75rem;
 }
 
+.history__auto {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  margin-left: var(--s2);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--dim);
+}
+
 /* --- board / scoreboard (Task 22) ---------------------------------------- */
 
 .board-view {
@@ -1239,6 +1249,23 @@ button {
   letter-spacing: 0.04em;
   color: var(--gold);
   font-size: 0.95rem;
+}
+
+.settings-section__caption {
+  margin: 0;
+  color: var(--dim);
+  font-size: 0.85rem;
+}
+
+.player-row__mapping {
+  min-height: 44px;
+  padding: 0 var(--s3);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-chip);
+  color: var(--cream);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
 }
 
 .settings-footer {

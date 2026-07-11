@@ -2,7 +2,7 @@
 // scoreboard with computed flavor titles).
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Zap } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
 import { getStats } from "../api";
@@ -42,6 +42,12 @@ export function History({ history, grudges }: HistoryProps) {
                 <span className="history-list__title">{h.title}</span>
                 <span className="history-list__meta">
                   {h.player_name} · {S.history.action[h.action]} · {formatWhen(h.ts)}
+                  {h.source === "auto" && (
+                    <span className="history__auto">
+                      <Zap size={12} aria-hidden="true" />
+                      {S.history.autoTag}
+                    </span>
+                  )}
                 </span>
               </li>
             ))}

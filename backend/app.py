@@ -478,6 +478,72 @@ def get_pool(stream: str):
     return items
 
 
+SECRET_KEYS = {k for k in config.SETTING_ENV if
+               k.endswith("_api_key") or k.endswith("_token")} | {"admin_pin"}
+CONNECTION_KEYS = set(config.SETTING_ENV) | {"veto_tokens", "admin_pin"}
+
+
+@app.get("/api/connections")
+def get_connections():
+    out = {}
+    for key in sorted(CONNECTION_KEYS):
+        val = config.resolve(key) if key in config.SETTING_ENV \
+            else config.get_setting(key)
+        masked = key in SECRET_KEYS
+        if val and masked:
+            val = "••••" + val[-2:]
+        out[key] = {"value": val, "masked": masked,
+                    "env": config.is_env_set(key)}
+    return out
+
+
+@app.put("/api/connections", dependencies=[Depends(require_admin)])
+def put_connections(body: dict):
+    unknown = [k for k in body if k not in CONNECTION_KEYS]
+    if unknown:
+        raise HTTPException(422, f"unknown_keys: {unknown}")
+    skipped = []
+    for key, value in body.items():
+        if config.is_env_set(key):
+            skipped.append(key)
+            continue
+        config.set_setting(key, str(value))
+    return {"ok": True, "skipped": skipped}
+
+
+TEST_PROBES = {
+    "seerr": ("seerr", "/api/v1/status"),
+    "radarr": ("radarr", "/api/v3/system/status"),
+    "sonarr": ("sonarr", "/api/v3/system/status"),
+    "tmdb": ("pools.tmdb", "/3/configuration"),
+    "trakt": ("pools.trakt", "/lists/trending"),
+    "jellyfin": ("media.jellyfin", "/System/Info"),
+    "plex": ("media.plex", "/"),
+}
+
+
+@app.post("/api/connections/{service}/test",
+          dependencies=[Depends(require_admin)])
+async def test_connection(service: str):
+    import importlib
+    if service not in TEST_PROBES:
+        raise HTTPException(404, "unknown_service")
+    mod_name, path = TEST_PROBES[service]
+    mod = importlib.import_module(mod_name)
+    try:
+        async with mod.make_client() as c:
+            r = await c.get(path)
+            r.raise_for_status()
+            if service == "plex":
+                machine = (r.json().get("MediaContainer") or {}) \
+                    .get("machineIdentifier")
+                if machine:
+                    config.set_setting("plex_machine_id", machine)
+    except Exception as e:
+        return {"ok": False, "message": str(e)}
+    return {"ok": True, "message": "Connection successful"}
+
+
 static_dir = os.environ.get("STATIC_DIR", "static")
 if os.path.isdir(static_dir):
     app.mount(os.environ.get("URL_BASE", "") or "/",

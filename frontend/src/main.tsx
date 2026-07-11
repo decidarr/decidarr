@@ -38,14 +38,29 @@ registerServiceWorker();
 function registerServiceWorker(): void {
   if (!("serviceWorker" in navigator)) return;
 
-  window.addEventListener("load", () => {
+  // Run once the document is loaded — but if this module evaluated AFTER
+  // the load event already fired (a fast reload can beat the listener),
+  // a plain window "load" listener would never run and the waiting-worker
+  // check below would be skipped, making the update toast unreachable in
+  // exactly the scenario it exists for. So dispatch immediately when the
+  // document is already complete.
+  if (document.readyState === "complete") {
+    void onLoad();
+  } else {
+    window.addEventListener("load", () => void onLoad(), { once: true });
+  }
+
+  function onLoad(): void {
     const base = import.meta.env.BASE_URL;
     const swUrl = `${base}sw.js`;
 
     navigator.serviceWorker
       .register(swUrl, { scope: base })
       .then((registration) => {
+        let prompted = false;
         const promptReload = (worker: ServiceWorker) => {
+          if (prompted) return; // one prompt per waiting update
+          prompted = true;
           toast(S.pwa.updateAvailable, {
             actionLabel: S.pwa.reload,
             // Stays up until the player acts — an update prompt that
@@ -55,22 +70,30 @@ function registerServiceWorker(): void {
           });
         };
 
-        // An update may already be waiting from a previous visit.
-        if (registration.waiting && navigator.serviceWorker.controller) {
-          promptReload(registration.waiting);
-        }
-
-        registration.addEventListener("updatefound", () => {
-          const installing = registration.installing;
-          if (!installing) return;
-          installing.addEventListener("statechange", () => {
-            // "installed" + an existing controller means this is an
-            // update, not the very first install — only prompt then.
-            if (installing.state === "installed" && navigator.serviceWorker.controller) {
-              promptReload(installing);
+        // Track a worker to installed-with-controller (= an update ready to
+        // take over, not the very first install). The browser starts the
+        // update check on navigation, often BEFORE this code runs, so by the
+        // time we get here the new worker may already be "installing" (miss
+        // the updatefound event) or already "waiting" — cover all three:
+        // already-waiting, mid-install, and future updates.
+        const track = (worker: ServiceWorker | null) => {
+          if (!worker) return;
+          if (worker.state === "installed" && navigator.serviceWorker.controller) {
+            promptReload(worker);
+            return;
+          }
+          worker.addEventListener("statechange", () => {
+            if (worker.state === "installed" && navigator.serviceWorker.controller) {
+              promptReload(worker);
             }
           });
-        });
+        };
+
+        if (registration.waiting && navigator.serviceWorker.controller) {
+          promptReload(registration.waiting); // installed before we arrived
+        }
+        track(registration.installing); // update already in flight
+        registration.addEventListener("updatefound", () => track(registration.installing));
       })
       .catch(() => {
         // Installability is a progressive enhancement — never block the app.
@@ -82,5 +105,5 @@ function registerServiceWorker(): void {
       reloaded = true;
       window.location.reload();
     });
-  });
+  }
 }

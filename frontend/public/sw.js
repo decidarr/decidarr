@@ -9,7 +9,15 @@
 // action posts {type: "SKIP_WAITING"} (handled below) which activates the
 // new SW immediately, then main.tsx reloads on "controllerchange". This is
 // what stops a cached shell from pinning a player to a stale build.
-const SHELL = "decidarr-shell-v1";
+// The SHELL cache name below ends in a placeholder token that
+// scripts/stamp-sw.mjs (run via the npm "build" script) rewrites at build
+// time with a hash of the content-hashed dist asset filenames. This makes
+// sw.js byte-different whenever the app content changes, which is the ONLY
+// thing that makes the browser run its SW update algorithm (→ updatefound
+// → registration.waiting → the "new version — reload?" toast in
+// main.tsx). A static literal would ship identical bytes every deploy and
+// the update toast would never fire, pinning users to a stale cached shell.
+const SHELL = "decidarr-shell-__BUILD_HASH__";
 const PRECACHE = ["./", "./index.html"];
 
 self.addEventListener("install", (event) => {
@@ -17,10 +25,18 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
+  // Drop every prior shell cache so a new build's stamped SHELL never
+  // leaves the old content-hashed assets orphaned in storage.
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== SHELL).map((k) => caches.delete(k))))
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((k) => k.startsWith("decidarr-shell-") && k !== SHELL)
+            .map((k) => caches.delete(k)),
+        ),
+      )
       .then(() => self.clients.claim()),
   );
 });

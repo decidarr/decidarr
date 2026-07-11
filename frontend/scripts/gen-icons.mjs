@@ -122,8 +122,10 @@ function downsample(hiBuf, hiSize, factor) {
  *
  * markRadiusFrac: outer ring radius as a fraction of size/2.
  * pointerTipFrac: how far the pointer tip extends, as a fraction of size/2
- *   (standard icons let this reach ~1.0 — touching the edge; maskable
- *   variants must keep it inside the 0.8 safe-zone radius, i.e. <= 0.4).
+ *   (standard icons let this reach ~1.0 — touching the edge). The 80%
+ *   maskable safe zone is a circle of radius 0.4·size (= 0.8·(size/2))
+ *   from center; a maskable pointerTipFrac of 0.4 puts the tip at
+ *   0.4·(size/2) = 0.2·size from center — well inside that safe radius.
  */
 function drawMark(size, { markRadiusFrac, pointerTipFrac, background = INK }) {
   const SS = 4; // supersample factor
@@ -209,7 +211,8 @@ for (const size of [192, 512]) {
   writePNG(`icon-${size}.png`, size, rgba);
 }
 
-// --- maskable icons: mark held inside the ~80% safe zone (radius 0.4) --
+// --- maskable icons: mark held inside the ~80% safe zone (safe radius
+// 0.4·size; the pointer tip lands at 0.2·size from center) --------------
 for (const size of [192, 512]) {
   const rgba = drawMark(size, { markRadiusFrac: 0.34, pointerTipFrac: 0.4 });
   writePNG(`icon-maskable-${size}.png`, size, rgba);

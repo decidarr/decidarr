@@ -1,7 +1,8 @@
 import asyncio
 import json
 import os
-from contextlib import asynccontextmanager
+import sqlite3
+from contextlib import asynccontextmanager, closing
 
 from fastapi import (APIRouter, Depends, FastAPI, File, Form, Header,
                      HTTPException, UploadFile)
@@ -22,9 +23,9 @@ VERSION = "1.0.0"
 async def _daily_refresh():
     while True:
         await asyncio.sleep(86400)
-        conn = db.get_conn()
-        ids = [r["id"] for r in conn.execute("SELECT id FROM pools WHERE active=1")]
-        conn.close()
+        with closing(db.get_conn()) as conn:
+            ids = [r["id"] for r in
+                   conn.execute("SELECT id FROM pools WHERE active=1")]
         for pool_id in ids:
             try:
                 await pool_refresh.refresh_pool(pool_id)
@@ -53,13 +54,12 @@ api = APIRouter()
 
 @api.get("/api/health")
 def health():
-    conn = db.get_conn()
-    pool_flags = {
-        mt: bool(conn.execute(
-            "SELECT 1 FROM pools WHERE media_type=? AND active=1",
-            (mt,)).fetchone())
-        for mt in ("movie", "tv")}
-    conn.close()
+    with closing(db.get_conn()) as conn:
+        pool_flags = {
+            mt: bool(conn.execute(
+                "SELECT 1 FROM pools WHERE media_type=? AND active=1",
+                (mt,)).fetchone())
+            for mt in ("movie", "tv")}
     return {
         "ok": True,
         "version": VERSION,
@@ -73,40 +73,38 @@ def health():
 
 @api.get("/api/state")
 def state():
-    conn = db.get_conn()
-    players = [dict(r) for r in conn.execute(
-        "SELECT id, name, emoji FROM players WHERE active=1 ORDER BY id")]
-    pools = {}
-    for mt in ("movie", "tv"):
-        row = conn.execute(
-            "SELECT id, name, source, refreshed_at FROM pools"
-            " WHERE media_type=? AND active=1", (mt,)).fetchone()
-        pools[mt] = dict(row) if row else None
-    picks = {r["media_type"]: dict(r) for r in conn.execute(
-        "SELECT * FROM current_picks")}
-    tokens = int(config.resolve("veto_tokens") or 1)
-    tz = config.resolve("tz") or "UTC"
-    vetoes = {p["id"]: max(0, tokens - db.vetoes_used_today(conn, p["id"], tz))
-              for p in players}
-    out = {
-        "players": players,
-        "pools": pools,
-        "current_picks": picks,
-        "seen": {mt: sorted(db.seen_keys(conn, mt)) for mt in ("movie", "tv")},
-        "vetoes": vetoes,
-        "veto_tokens": tokens,
-        "history": db.history(conn, 50),
-        "grudges": db.grudges(conn),
-    }
-    conn.close()
+    with closing(db.get_conn()) as conn:
+        players = [dict(r) for r in conn.execute(
+            "SELECT id, name, emoji FROM players WHERE active=1 ORDER BY id")]
+        pools = {}
+        for mt in ("movie", "tv"):
+            row = conn.execute(
+                "SELECT id, name, source, refreshed_at FROM pools"
+                " WHERE media_type=? AND active=1", (mt,)).fetchone()
+            pools[mt] = dict(row) if row else None
+        picks = {r["media_type"]: dict(r) for r in conn.execute(
+            "SELECT * FROM current_picks")}
+        tokens = int(config.resolve("veto_tokens") or 1)
+        tz = config.resolve("tz") or "UTC"
+        vetoes = {p["id"]: max(0, tokens - db.vetoes_used_today(conn, p["id"], tz))
+                  for p in players}
+        out = {
+            "players": players,
+            "pools": pools,
+            "current_picks": picks,
+            "seen": {mt: sorted(db.seen_keys(conn, mt)) for mt in ("movie", "tv")},
+            "vetoes": vetoes,
+            "veto_tokens": tokens,
+            "history": db.history(conn, 50),
+            "grudges": db.grudges(conn),
+        }
     return out
 
 
 @api.get("/api/stats")
 def stats():
-    conn = db.get_conn()
-    result = db.stats(conn)
-    conn.close()
+    with closing(db.get_conn()) as conn:
+        result = db.stats(conn)
     return result
 
 
@@ -123,34 +121,34 @@ class PlayerIn(BaseModel):
 
 @api.get("/api/players")
 def list_players():
-    conn = db.get_conn()
-    rows = [dict(r) for r in conn.execute(
-        "SELECT id, name, emoji, active FROM players ORDER BY id")]
-    conn.close()
+    with closing(db.get_conn()) as conn:
+        rows = [dict(r) for r in conn.execute(
+            "SELECT id, name, emoji, active FROM players ORDER BY id")]
     return rows
 
 
 @api.post("/api/players", status_code=201, dependencies=[Depends(require_admin)])
 def create_player(body: PlayerIn):
-    conn = db.get_conn()
-    dup = conn.execute("SELECT 1 FROM players WHERE name=?", (body.name,)).fetchone()
-    if dup:
-        conn.close()
-        raise HTTPException(409, "player_exists")
-    cur = conn.execute("INSERT INTO players(name, emoji) VALUES (?,?)",
-                       (body.name, body.emoji))
-    conn.commit()
-    pid = cur.lastrowid
-    conn.close()
+    with closing(db.get_conn()) as conn:
+        dup = conn.execute("SELECT 1 FROM players WHERE name=?",
+                           (body.name,)).fetchone()
+        if dup:
+            raise HTTPException(409, "player_exists")
+        try:
+            cur = conn.execute("INSERT INTO players(name, emoji) VALUES (?,?)",
+                               (body.name, body.emoji))
+            conn.commit()
+        except sqlite3.IntegrityError:
+            raise HTTPException(409, "player_exists")
+        pid = cur.lastrowid
     return {"id": pid, "name": body.name, "emoji": body.emoji, "active": 1}
 
 
 @api.delete("/api/players/{player_id}", dependencies=[Depends(require_admin)])
 def deactivate_player(player_id: int):
-    conn = db.get_conn()
-    conn.execute("UPDATE players SET active=0 WHERE id=?", (player_id,))
-    conn.commit()
-    conn.close()
+    with closing(db.get_conn()) as conn:
+        conn.execute("UPDATE players SET active=0 WHERE id=?", (player_id,))
+        conn.commit()
     return {"ok": True}
 
 
@@ -169,10 +167,9 @@ def post_event(body: EventIn):
         raise HTTPException(422, "action_not_allowed")
     if body.media_type not in ("movie", "tv"):
         raise HTTPException(422, "bad_media_type")
-    conn = db.get_conn()
-    db.log_event(conn, body.player, body.media_type, body.item_key,
-                 body.title, body.year, body.action)
-    conn.close()
+    with closing(db.get_conn()) as conn:
+        db.log_event(conn, body.player, body.media_type, body.item_key,
+                     body.title, body.year, body.action)
     return {"ok": True}
 
 
@@ -190,14 +187,12 @@ def post_veto(body: VetoIn):
         raise HTTPException(422, "bad_media_type")
     tokens = int(config.resolve("veto_tokens") or 1)
     tz = config.resolve("tz") or "UTC"
-    conn = db.get_conn()
-    used = db.vetoes_used_today(conn, body.player, tz)
-    if used >= tokens:
-        conn.close()
-        raise HTTPException(409, "no_tokens")
-    db.log_event(conn, body.player, body.media_type, body.item_key,
-                 body.title, body.year, "vetoed")
-    conn.close()
+    with closing(db.get_conn()) as conn:
+        used = db.vetoes_used_today(conn, body.player, tz)
+        if used >= tokens:
+            raise HTTPException(409, "no_tokens")
+        db.log_event(conn, body.player, body.media_type, body.item_key,
+                     body.title, body.year, "vetoed")
     return {"ok": True, "remaining": tokens - used - 1}
 
 
@@ -207,16 +202,15 @@ class ResetSeenIn(BaseModel):
 
 @api.post("/api/reset-seen", dependencies=[Depends(require_admin)])
 def reset_seen(body: ResetSeenIn):
-    conn = db.get_conn()
-    if body.stream:
-        cur = conn.execute(
-            "DELETE FROM events WHERE action='seen' AND media_type=?",
-            (body.stream,))
-    else:
-        cur = conn.execute("DELETE FROM events WHERE action='seen'")
-    conn.commit()
-    deleted = cur.rowcount
-    conn.close()
+    with closing(db.get_conn()) as conn:
+        if body.stream:
+            cur = conn.execute(
+                "DELETE FROM events WHERE action='seen' AND media_type=?",
+                (body.stream,))
+        else:
+            cur = conn.execute("DELETE FROM events WHERE action='seen'")
+        conn.commit()
+        deleted = cur.rowcount
     return {"ok": True, "deleted": deleted}
 
 
@@ -224,10 +218,9 @@ def reset_seen(body: ResetSeenIn):
 def clear_pick(stream: str):
     if stream not in ("movie", "tv"):
         raise HTTPException(422, "bad_stream")
-    conn = db.get_conn()
-    conn.execute("DELETE FROM current_picks WHERE media_type=?", (stream,))
-    conn.commit()
-    conn.close()
+    with closing(db.get_conn()) as conn:
+        conn.execute("DELETE FROM current_picks WHERE media_type=?", (stream,))
+        conn.commit()
     return {"ok": True}
 
 
@@ -245,16 +238,15 @@ class DuelWinIn(BaseModel):
 def duel_win(body: DuelWinIn):
     if body.media_type not in ("movie", "tv"):
         raise HTTPException(422, "bad_media_type")
-    conn = db.get_conn()
-    try:
-        db.upsert_pick(conn, body.media_type, body.item_key, body.title,
-                       body.year, body.tmdb_id, None, body.player, body.replace)
-    except db.PendingPickError:
-        conn.close()
-        raise HTTPException(409, "pending_pick")
-    db.log_event(conn, body.player, body.media_type, body.item_key,
-                 body.title, body.year, "duel_won")
-    conn.close()
+    with closing(db.get_conn()) as conn:
+        try:
+            db.upsert_pick(conn, body.media_type, body.item_key, body.title,
+                           body.year, body.tmdb_id, None, body.player,
+                           body.replace)
+        except db.PendingPickError:
+            raise HTTPException(409, "pending_pick")
+        db.log_event(conn, body.player, body.media_type, body.item_key,
+                     body.title, body.year, "duel_won")
     return {"ok": True}
 
 
@@ -313,39 +305,38 @@ async def watch(body: WatchIn):
     s = await _seerr_status(body.item_key, body.media_type, body.title, body.year)
     tmdb_id = body.tmdb_id or s.get("tmdb_id")
     tvdb_id = s.get("tvdb_id")
-    conn = db.get_conn()
     # raw Seerr verdict on purpose: Summon is only invoked when /api/status
     # wasn't 'available', so we don't consult the media-server overlay here.
     if s["verdict"] == "available":
-        try:
-            db.upsert_pick(conn, body.media_type, body.item_key, body.title,
-                           body.year, tmdb_id, tvdb_id, body.player, body.replace)
-        except db.PendingPickError:
-            conn.close()
-            raise HTTPException(409, "pending_pick")
-        conn.close()
+        with closing(db.get_conn()) as conn:
+            try:
+                db.upsert_pick(conn, body.media_type, body.item_key, body.title,
+                               body.year, tmdb_id, tvdb_id, body.player,
+                               body.replace)
+            except db.PendingPickError:
+                raise HTTPException(409, "pending_pick")
         overlay = await _media_overlay(body.media_type, body.title, body.year,
                                        tmdb_id)
         return {"verdict": "available",
                 "deep_link": overlay["deep_link"] if overlay else None}
     # not available -> request it (pick committed only if request succeeds,
     # but the 409 check must come FIRST so we never request then discard)
-    row = conn.execute("SELECT item_key FROM current_picks WHERE media_type=?",
-                       (body.media_type,)).fetchone()
-    if row and row["item_key"] != body.item_key and not body.replace:
-        conn.close()
-        raise HTTPException(409, "pending_pick")
-    seasons = config.resolve("tv_request_seasons") or "first"
-    async with seerr.make_client() as c:
-        result = await seerr.request(c, tmdb_id, body.media_type, seasons)
-    if not result["ok"]:
-        conn.close()
-        raise HTTPException(502, "request_failed")
-    db.upsert_pick(conn, body.media_type, body.item_key, body.title, body.year,
-                   result["tmdb_id"], result["tvdb_id"], body.player, True)
-    db.log_event(conn, body.player, body.media_type, body.item_key,
-                 body.title, body.year, "requested")
-    conn.close()
+    with closing(db.get_conn()) as conn:
+        row = conn.execute(
+            "SELECT item_key FROM current_picks WHERE media_type=?",
+            (body.media_type,)).fetchone()
+        if row and row["item_key"] != body.item_key and not body.replace:
+            raise HTTPException(409, "pending_pick")
+        seasons = config.resolve("tv_request_seasons") or "first"
+        async with seerr.make_client() as c:
+            result = await seerr.request(c, tmdb_id, body.media_type, seasons)
+        if not result["ok"]:
+            raise HTTPException(502, "request_failed")
+        db.upsert_pick(conn, body.media_type, body.item_key, body.title,
+                       body.year, result["tmdb_id"], result["tvdb_id"],
+                       body.player, True)
+        db.log_event(conn, body.player, body.media_type, body.item_key,
+                     body.title, body.year, "requested")
     return {"verdict": "pending", "requested": True}
 
 
@@ -375,11 +366,10 @@ class PoolIn(BaseModel):
 
 @api.get("/api/pools")
 def list_pools():
-    conn = db.get_conn()
-    rows = [dict(r) for r in conn.execute(
-        "SELECT p.*, (SELECT COUNT(*) FROM items i WHERE i.pool_id=p.id)"
-        " AS item_count FROM pools p ORDER BY p.id")]
-    conn.close()
+    with closing(db.get_conn()) as conn:
+        rows = [dict(r) for r in conn.execute(
+            "SELECT p.*, (SELECT COUNT(*) FROM items i WHERE i.pool_id=p.id)"
+            " AS item_count FROM pools p ORDER BY p.id")]
     return rows
 
 
@@ -390,39 +380,35 @@ def create_pool(body: PoolIn):
         raise HTTPException(422, "bad_pool")
     if body.source == "trakt" and not config.resolve("trakt_client_id"):
         raise HTTPException(422, "trakt_unconfigured")
-    conn = db.get_conn()
-    cur = conn.execute(
-        "INSERT INTO pools(name, media_type, source, config) VALUES (?,?,?,?)",
-        (body.name, body.media_type, body.source, json.dumps(body.config)))
-    conn.commit()
-    pool_id = cur.lastrowid
-    conn.close()
+    with closing(db.get_conn()) as conn:
+        cur = conn.execute(
+            "INSERT INTO pools(name, media_type, source, config) VALUES (?,?,?,?)",
+            (body.name, body.media_type, body.source, json.dumps(body.config)))
+        conn.commit()
+        pool_id = cur.lastrowid
     return {"id": pool_id}
 
 
 @api.delete("/api/pools/{pool_id}", dependencies=[Depends(require_admin)])
 def delete_pool(pool_id: int):
-    conn = db.get_conn()
-    conn.execute("DELETE FROM items WHERE pool_id=?", (pool_id,))
-    conn.execute("DELETE FROM pools WHERE id=?", (pool_id,))
-    conn.commit()
-    conn.close()
+    with closing(db.get_conn()) as conn:
+        conn.execute("DELETE FROM items WHERE pool_id=?", (pool_id,))
+        conn.execute("DELETE FROM pools WHERE id=?", (pool_id,))
+        conn.commit()
     return {"ok": True}
 
 
 @api.post("/api/pools/{pool_id}/activate", dependencies=[Depends(require_admin)])
 def activate_pool(pool_id: int):
-    conn = db.get_conn()
-    row = conn.execute("SELECT media_type FROM pools WHERE id=?",
-                       (pool_id,)).fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "pool_not_found")
-    conn.execute("UPDATE pools SET active=0 WHERE media_type=?",
-                 (row["media_type"],))
-    conn.execute("UPDATE pools SET active=1 WHERE id=?", (pool_id,))
-    conn.commit()
-    conn.close()
+    with closing(db.get_conn()) as conn:
+        row = conn.execute("SELECT media_type FROM pools WHERE id=?",
+                           (pool_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "pool_not_found")
+        conn.execute("UPDATE pools SET active=0 WHERE media_type=?",
+                     (row["media_type"],))
+        conn.execute("UPDATE pools SET active=1 WHERE id=?", (pool_id,))
+        conn.commit()
     return {"ok": True}
 
 
@@ -433,60 +419,58 @@ async def refresh_pool_route(pool_id: int):
 
 @api.post("/api/pools/import", dependencies=[Depends(require_admin)])
 async def import_pool(pool_id: int = Form(...), file: UploadFile = File(...)):
-    conn = db.get_conn()
-    pool = conn.execute("SELECT * FROM pools WHERE id=?", (pool_id,)).fetchone()
-    if not pool:
-        conn.close()
-        raise HTTPException(404, "pool_not_found")
-    try:
-        rows = custom_pool.parse(file.filename or "list.csv", await file.read())
-    except ValueError:
-        conn.close()
-        raise HTTPException(422, "bad_format")
-    unresolved = []
-    async with tmdb_pool.make_client() as client:
+    with closing(db.get_conn()) as conn:
+        pool = conn.execute("SELECT * FROM pools WHERE id=?",
+                            (pool_id,)).fetchone()
+        if not pool:
+            raise HTTPException(404, "pool_not_found")
+        try:
+            rows = custom_pool.parse(file.filename or "list.csv",
+                                     await file.read())
+        except ValueError:
+            raise HTTPException(422, "bad_format")
+        unresolved = []
+        async with tmdb_pool.make_client() as client:
+            for r in rows:
+                if not r.get("tmdb_id"):
+                    r["tmdb_id"] = await tmdb_pool.search(
+                        client, r["title"], r.get("year"), pool["media_type"])
+                    if not r["tmdb_id"]:
+                        unresolved.append(r["title"])
+        # dedupe NULL-tmdb rows on normalized (title, year) — UNIQUE won't
+        seen_keys_, deduped = set(), []
         for r in rows:
-            if not r.get("tmdb_id"):
-                r["tmdb_id"] = await tmdb_pool.search(
-                    client, r["title"], r.get("year"), pool["media_type"])
-                if not r["tmdb_id"]:
-                    unresolved.append(r["title"])
-    # dedupe NULL-tmdb rows on normalized (title, year) — UNIQUE won't
-    seen_keys_, deduped = set(), []
-    for r in rows:
-        k = ("id", r["tmdb_id"]) if r["tmdb_id"] else \
-            ("t", db.normalize(r["title"]), r.get("year"))
-        if k in seen_keys_:
-            continue
-        seen_keys_.add(k)
-        deduped.append(r)
-    cfg = json.loads(pool["config"])
-    cfg["items"] = deduped
-    conn.execute("UPDATE pools SET config=? WHERE id=?",
-                 (json.dumps(cfg), pool_id))
-    conn.commit()
-    conn.close()
+            k = ("id", r["tmdb_id"]) if r["tmdb_id"] else \
+                ("t", db.normalize(r["title"]), r.get("year"))
+            if k in seen_keys_:
+                continue
+            seen_keys_.add(k)
+            deduped.append(r)
+        cfg = json.loads(pool["config"])
+        cfg["items"] = deduped
+        conn.execute("UPDATE pools SET config=? WHERE id=?",
+                     (json.dumps(cfg), pool_id))
+        conn.commit()
     await pool_refresh.refresh_pool(pool_id)
     return {"imported": len(deduped), "unresolved": unresolved}
 
 
 @api.get("/api/pool")
 def get_pool(stream: str):
-    conn = db.get_conn()
-    pool = conn.execute(
-        "SELECT id FROM pools WHERE media_type=? AND active=1",
-        (stream,)).fetchone()
-    if not pool:
-        conn.close()
-        return []
-    items = []
-    for r in conn.execute("SELECT * FROM items WHERE pool_id=? ORDER BY rank",
-                          (pool["id"],)):
-        d = dict(r)
-        d["genres"] = json.loads(d["genres"]) if d["genres"] else []
-        d["item_key"] = db.item_key(d["tmdb_id"], d["title"], d["year"])
-        items.append(d)
-    conn.close()
+    with closing(db.get_conn()) as conn:
+        pool = conn.execute(
+            "SELECT id FROM pools WHERE media_type=? AND active=1",
+            (stream,)).fetchone()
+        if not pool:
+            return []
+        items = []
+        for r in conn.execute(
+                "SELECT * FROM items WHERE pool_id=? ORDER BY rank",
+                (pool["id"],)):
+            d = dict(r)
+            d["genres"] = json.loads(d["genres"]) if d["genres"] else []
+            d["item_key"] = db.item_key(d["tmdb_id"], d["title"], d["year"])
+            items.append(d)
     return items
 
 
@@ -509,7 +493,7 @@ def get_connections():
             else config.get_setting(key)
         masked = key in SECRET_KEYS
         if val and masked:
-            val = "••••" + val[-2:]
+            val = ("••••" + val[-2:]) if len(val) > 2 else "••••"
         out[key] = {"value": val, "masked": masked,
                     "env": config.is_env_set(key)}
     return out

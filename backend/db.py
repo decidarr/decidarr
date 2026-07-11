@@ -2,6 +2,7 @@ import os
 import re
 import sqlite3
 import unicodedata
+from contextlib import closing
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS players(
@@ -75,10 +76,9 @@ def get_conn(path: str | None = None) -> sqlite3.Connection:
 
 
 def init_db(path: str | None = None) -> None:
-    conn = get_conn(path)
-    conn.executescript(SCHEMA)
-    conn.commit()
-    conn.close()
+    with closing(get_conn(path)) as conn:
+        conn.executescript(SCHEMA)
+        conn.commit()
 
 
 def normalize(title: str) -> str:
@@ -91,7 +91,7 @@ def normalize(title: str) -> str:
 
 
 def item_key(tmdb_id: int | None, title: str, year: int | None) -> str:
-    if tmdb_id:
+    if tmdb_id is not None:
         return f"tmdb:{tmdb_id}"
     return f"t:{normalize(title)}|{year if year is not None else ''}"
 
@@ -160,7 +160,10 @@ def grudges(conn):
 
 
 def vetoes_used_today(conn, player, tz_name):
-    tz = ZoneInfo(tz_name or "UTC")
+    try:
+        tz = ZoneInfo(tz_name or "UTC")
+    except Exception:
+        tz = ZoneInfo("UTC")
     today = datetime.now(tz).date()
     rows = conn.execute(
         "SELECT ts FROM events WHERE action='vetoed' AND player=?", (player,))

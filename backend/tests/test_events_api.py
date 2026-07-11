@@ -53,8 +53,10 @@ def test_veto_tokens_setting_raises_allowance(client):
     pid = _player(client)
     body = {"player": pid, "media_type": "movie", "item_key": "tmdb:1",
             "title": "A"}
-    assert client.post("/api/veto", json=body).status_code == 200
-    assert client.post("/api/veto", json={**body, "item_key": "tmdb:2"}).status_code == 200
+    r1 = client.post("/api/veto", json=body)
+    assert r1.status_code == 200 and r1.json()["remaining"] == 1
+    r2 = client.post("/api/veto", json={**body, "item_key": "tmdb:2"})
+    assert r2.status_code == 200 and r2.json()["remaining"] == 0
     assert client.post("/api/veto", json={**body, "item_key": "tmdb:3"}).status_code == 409
 
 def test_reset_seen_stream_scoped(client):
@@ -65,3 +67,12 @@ def test_reset_seen_stream_scoped(client):
     assert r.status_code == 200 and r.json()["deleted"] == 1
     seen = client.get("/api/state").json()["seen"]
     assert seen["movie"] == [] and seen["tv"] == ["tmdb:2"]
+
+def test_reset_seen_no_stream_clears_both(client):
+    pid = _player(client)
+    client.post("/api/event", json=_evt(pid, "seen", "movie", "tmdb:1"))
+    client.post("/api/event", json=_evt(pid, "seen", "tv", "tmdb:2"))
+    r = client.post("/api/reset-seen", json={})
+    assert r.status_code == 200 and r.json()["deleted"] == 2
+    seen = client.get("/api/state").json()["seen"]
+    assert seen["movie"] == [] and seen["tv"] == []

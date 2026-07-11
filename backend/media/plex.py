@@ -43,7 +43,9 @@ async def availability(client, item, media_type):
                 if not _playable(m, media_type):
                     return ("absent", "exact", None)
                 return ("available", "exact", str(m["ratingKey"]))
-    # rungs 2-3: title+year (reported as fuzzy)
+    # rungs 2-3: title+year (reported as fuzzy). conf is deliberately
+    # discarded here — rungs 2-3 always report "fuzzy" per spec, so we
+    # don't branch on best_match's own exact/fuzzy/none distinction.
     match, conf = best_match(metas, item["title"], item.get("year"))
     if match:
         if not _playable(match, media_type):

@@ -28,7 +28,7 @@ async def progress(client, tvdb_id, title, year):
         r.raise_for_status()
         all_series = r.json()
         series = None
-        if tvdb_id:
+        if tvdb_id is not None:
             series = next((s for s in all_series if s.get("tvdbId") == tvdb_id),
                           None)
         if series is None and title:

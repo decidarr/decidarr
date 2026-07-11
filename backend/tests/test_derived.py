@@ -54,6 +54,17 @@ def test_vetoes_used_today_is_tz_aware_and_cross_stream(db_file):
     assert db.vetoes_used_today(conn, 2, "Pacific/Auckland") == 0
     conn.close()
 
+def test_vetoes_used_today_falls_back_to_utc_on_bad_tz(db_file):
+    # a malformed/unknown TZ setting must never 500 the state/veto routes —
+    # fall back to UTC instead of raising ZoneInfoNotFoundError.
+    conn = db.get_conn(db_file)
+    _seed_players(conn)
+    db.log_event(conn, 1, "movie", "tmdb:2", "A", None, "vetoed")
+    assert db.vetoes_used_today(conn, 1, "Not/AZone") == \
+        db.vetoes_used_today(conn, 1, "UTC")
+    assert db.vetoes_used_today(conn, 1, "Not/AZone") == 1
+    conn.close()
+
 def test_history_newest_first_watched_and_requested_only(db_file):
     conn = db.get_conn(db_file)
     _seed_players(conn)

@@ -47,6 +47,14 @@ def test_unresolvable_is_unknown():
     r = asyncio.run(sonarr.progress(_client(series=[]), 99999, None, None))
     assert r["state"] == "unknown"
 
+def test_exact_title_wrong_year_is_unknown():
+    # highest-risk match case: exact title, year off by 1, no tvdb_id.
+    # best_match reports this as "fuzzy" (within the +/-1 window), but
+    # sonarr only ever accepts conf == "exact" — must NOT fall back to a
+    # wrong series' progress bar.
+    r = asyncio.run(sonarr.progress(_client(), None, "Breaking Bad", 2009))
+    assert r["state"] == "unknown"
+
 def test_no_queue_no_files_is_searching():
     r = asyncio.run(sonarr.progress(
         _client(episodes=[_ep(1, False)]), 81189, None, None))

@@ -20,3 +20,12 @@ def test_admin_pin_gates_writes_not_reads(client):
                        headers={"X-Admin-Pin": "1234"}).status_code == 201
     assert client.get("/api/players").status_code == 200   # reads never gated
     assert client.get("/api/state").status_code == 200     # game never gated
+
+def test_admin_pin_wrong_value_rejected(client):
+    config.set_setting("admin_pin", "1234")
+    r = client.post("/api/players", json={"name": "Sam"},
+                    headers={"X-Admin-Pin": "wrong"})
+    assert r.status_code == 401
+    r = client.post("/api/players", json={"name": "Sam"},
+                    headers={"X-Admin-Pin": "1234"})
+    assert r.status_code == 201

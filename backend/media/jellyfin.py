@@ -53,6 +53,9 @@ async def availability(client, item, media_type):
         cands = _shape(r.json().get("Items", []))
     except (httpx.HTTPError, ValueError):
         return ("unknown", "none", None)
+    # conf is deliberately discarded here — rungs 2-3 always report
+    # "fuzzy" per spec, so we don't branch on best_match's own
+    # exact/fuzzy/none distinction.
     match, conf = best_match(cands, item["title"], item.get("year"))
     if match:
         hit = match["raw"]

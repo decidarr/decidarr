@@ -66,6 +66,25 @@ def test_jellyfin_provider_id_exact(db_file, monkeypatch):
     assert jellyfin.deep_link("jf1") == \
         "http://jf:8096/web/index.html#!/details?id=jf1"
 
+def test_jellyfin_tv_missing_recursive_item_count_is_available(db_file, monkeypatch):
+    # A result missing RecursiveItemCount entirely (some Jellyfin responses
+    # omit it) must be treated as available, not filtered out as absent.
+    monkeypatch.setenv("JELLYFIN_URL", "http://jf:8096")
+    def handler(req):
+        if "AnyProviderIdEquals" in str(req.url):
+            return httpx.Response(200, json={"Items": [
+                {"Id": "jf9", "Name": "Breaking Bad", "ProductionYear": 2008}]})
+        return httpx.Response(200, json={"Items": []})
+    c = httpx.AsyncClient(transport=httpx.MockTransport(handler),
+                          base_url="http://jf:8096")
+    item = {"tmdb_id": 1396, "title": "Breaking Bad", "year": 2008}
+    v, conf, key = asyncio.run(jellyfin.availability(c, item, "tv"))
+    assert (v, conf, key) == ("available", "exact", "jf9")
+
+def test_jellyfin_deep_link_none_when_url_unset(db_file, monkeypatch):
+    monkeypatch.delenv("JELLYFIN_URL", raising=False)
+    assert jellyfin.deep_link("jf1") is None
+
 def test_media_errors_are_unknown(db_file):
     def handler(req):
         raise httpx.ConnectError("down")

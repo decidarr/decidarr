@@ -1,4 +1,5 @@
 import os
+from contextlib import closing
 
 import db
 
@@ -23,19 +24,18 @@ def is_env_set(key: str) -> bool:
 
 
 def get_setting(key: str) -> str | None:
-    conn = db.get_conn()
-    row = conn.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
-    conn.close()
+    with closing(db.get_conn()) as conn:
+        row = conn.execute("SELECT value FROM settings WHERE key=?",
+                           (key,)).fetchone()
     return row["value"] if row else None
 
 
 def set_setting(key: str, value: str) -> None:
-    conn = db.get_conn()
-    conn.execute(
-        "INSERT INTO settings(key,value) VALUES (?,?)"
-        " ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
-    conn.commit()
-    conn.close()
+    with closing(db.get_conn()) as conn:
+        conn.execute(
+            "INSERT INTO settings(key,value) VALUES (?,?)"
+            " ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
+        conn.commit()
 
 
 def resolve(key: str) -> str | None:
@@ -45,12 +45,11 @@ def resolve(key: str) -> str | None:
 
 
 def seed_settings() -> None:
-    conn = db.get_conn()
-    for key, env in SETTING_ENV.items():
-        val = os.environ.get(env)
-        if val:
-            conn.execute(
-                "INSERT INTO settings(key,value) VALUES (?,?)"
-                " ON CONFLICT(key) DO NOTHING", (key, val))
-    conn.commit()
-    conn.close()
+    with closing(db.get_conn()) as conn:
+        for key, env in SETTING_ENV.items():
+            val = os.environ.get(env)
+            if val:
+                conn.execute(
+                    "INSERT INTO settings(key,value) VALUES (?,?)"
+                    " ON CONFLICT(key) DO NOTHING", (key, val))
+        conn.commit()

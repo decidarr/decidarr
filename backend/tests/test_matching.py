@@ -21,6 +21,10 @@ def test_fuzzy_when_year_missing():
 def test_no_match():
     assert best_match(CANDS, "Alien", 1979) == (None, "none")
 
+def test_year_off_by_two_is_none():
+    # locks the exact/fuzzy/none boundary: +/-1 is fuzzy, +/-2 is none.
+    assert best_match(CANDS, "The Thing", 1984) == (None, "none")
+
 def test_diacritics_and_punctuation():
     cands = [{"title": "Léon: The Professional", "year": 1994}]
     m, conf = best_match(cands, "leon the professional", 1994)

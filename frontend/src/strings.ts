@@ -230,6 +230,7 @@ export const S = {
     title: "Settings",
     pinRequired: "Enter the admin PIN to make changes.",
     pinIncorrect: "Wrong PIN.",
+    pinCancelled: "PIN entry cancelled.",
     envLocked: "Set via environment variable — read-only here.",
     connectionTest: {
       testing: "Testing…",

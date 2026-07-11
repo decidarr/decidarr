@@ -1333,6 +1333,11 @@ button {
   cursor: pointer;
 }
 
+.pool-row__upload:focus-within {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
 .connection-card {
   padding: var(--s4);
   background: var(--panel);

@@ -64,7 +64,6 @@ function AppShell() {
       <div className="app app--centered">
         <Onboarding onFinish={() => setOnboardingSkipped(true)} />
         <AdminPinPrompt />
-        <Toast />
       </div>
     );
   }
@@ -155,7 +154,6 @@ function AppShell() {
         />
       )}
 
-      <Toast />
       <AdminPinPrompt />
     </div>
   );
@@ -189,6 +187,11 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AppShell />
+      {/* Single Toast host at the app root — it must render in every
+          AppShell state (loading, error, onboarding, identity gate, main)
+          so an enqueued toast (e.g. the SW "new version" prompt) is never
+          silently swallowed by an early-return branch. */}
+      <Toast />
     </QueryClientProvider>
   );
 }

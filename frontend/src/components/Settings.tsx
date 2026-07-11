@@ -18,7 +18,7 @@ import { toast } from "./Toast";
 import { withAdminPin } from "./AdminPin";
 import type { Player, Stream } from "../types";
 
-function isActive(p: Player): boolean {
+export function isActive(p: Player): boolean {
   return p.active === 1 || p.active === true || p.active === undefined;
 }
 
@@ -399,12 +399,15 @@ export function ConnectionsSection() {
       const r = await withAdminPin(() => testConnection(svc.service));
       setTestResults((s) => ({ ...s, [svc.service]: r }));
     } catch (e) {
+      // A cancelled admin-PIN prompt re-throws ApiError{detail:"admin_pin_required"}
+      // — that's an internal token, not a human-readable message, so it needs
+      // its own friendly copy rather than being rendered raw.
+      const message = e instanceof ApiError
+        ? (e.detail === "admin_pin_required" ? S.settings.pinCancelled : e.detail)
+        : S.settings.connectionTest.fail;
       setTestResults((s) => ({
         ...s,
-        [svc.service]: {
-          ok: false,
-          message: e instanceof ApiError ? e.detail : S.settings.connectionTest.fail,
-        },
+        [svc.service]: { ok: false, message },
       }));
     }
   }

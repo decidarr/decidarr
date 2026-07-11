@@ -9,7 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { listPlayers } from "../api";
 import { S } from "../strings";
-import { ConnectionsSection, PlayersSection, PoolsSection } from "./Settings";
+import { ConnectionsSection, PlayersSection, PoolsSection, isActive } from "./Settings";
 
 export interface OnboardingProps {
   onFinish: () => void;
@@ -23,9 +23,7 @@ export function Onboarding({ onFinish }: OnboardingProps) {
   // moment the player adds someone there, this count updates too, without
   // any prop plumbing between the two.
   const playersQuery = useQuery({ queryKey: ["players"], queryFn: listPlayers });
-  const playerCount = (playersQuery.data ?? []).filter(
-    (p) => p.active === 1 || p.active === true,
-  ).length;
+  const playerCount = (playersQuery.data ?? []).filter(isActive).length;
 
   const meta = S.onboarding.steps[step];
   const isFirst = step === 0;

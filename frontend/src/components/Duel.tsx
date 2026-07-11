@@ -53,13 +53,10 @@ export function Duel({ players, pool, seen, onDone, onClose }: DuelProps) {
 
   const [duelistIds, setDuelistIds] = useState<IdPair>(() => {
     if (players.length < 2) return [playerId, null];
-    // A history entry can reference a player who's since been deactivated
-    // (no longer in the active `players` list) — fall back to the first
-    // other active player rather than preselecting someone who can't duel.
-    const fromHistory = defaultDuelOpponent(players, playerId, stateQuery.data?.history ?? []);
-    const opponent = fromHistory != null && players.some((p) => p.id === fromHistory)
-      ? fromHistory
-      : players.find((p) => p.id !== playerId)?.id ?? null;
+    // defaultDuelOpponent already validates any history hit against the
+    // active `players` list and falls back to the first other active
+    // player, so no extra guard is needed here.
+    const opponent = defaultDuelOpponent(players, playerId, stateQuery.data?.history ?? []);
     return [playerId, opponent];
   });
 

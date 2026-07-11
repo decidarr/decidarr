@@ -35,6 +35,10 @@ export function verdictToAction(verdict: Verdict, seerrConfigured: boolean) {
     case "pending": return "progress";
     case "unrequested": return seerrConfigured ? "summon" : "configure";
     case "notfound": return "manual";
+    // "unknown" means we couldn't confirm status against Seerr — with Seerr
+    // unconfigured that's the expected state, so hint the same "configure"
+    // fix as the unrequested arm rather than offering a Summon that 503s.
+    case "unknown": return seerrConfigured ? "summon" : "configure";
     default: return "summon";
   }
 }
@@ -61,14 +65,19 @@ export function duelCandidates(
 
 /** Default second duelist for the 3+-player picker: the most recently
  * active player other than `currentId`, per `state.history[0..]` (newest
- * first). Falls back to the first other active player when history has
- * nothing to say (fresh install, or everyone's history is `currentId`'s
- * own). Returns null only when no other player exists to duel. */
+ * first). A history entry can reference a player who's since been
+ * deactivated (no longer in `players` — /api/state's players list only
+ * ever contains active players), so history hits are validated against
+ * `players` before being trusted. Falls back to the first other active
+ * player when history has nothing usable to say (fresh install, everyone's
+ * history is `currentId`'s own, or the only history hit is deactivated).
+ * Returns null only when no other active player exists to duel. */
 export function defaultDuelOpponent(
   players: Player[], currentId: number | null, history: HistoryEntry[],
 ): number | null {
   if (currentId == null) return null;
-  const fromHistory = history.find((h) => h.player !== currentId);
+  const activeIds = new Set(players.map((p) => p.id));
+  const fromHistory = history.find((h) => h.player !== currentId && activeIds.has(h.player));
   if (fromHistory) return fromHistory.player;
   const other = players.find((p) => p.id !== currentId);
   return other ? other.id : null;

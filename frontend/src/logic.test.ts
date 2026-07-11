@@ -97,6 +97,12 @@ describe("defaultDuelOpponent", () => {
     expect(defaultDuelOpponent(players, 1, [])).toBe(2);
     expect(defaultDuelOpponent(players, 1, [hist(1)])).toBe(2);
   });
+  it("skips a history entry referencing a player no longer in the active list", () => {
+    // 99 isn't in `players` (deactivated) — skip it and use the next hit.
+    expect(defaultDuelOpponent(players, 1, [hist(99), hist(3)])).toBe(3);
+    // No valid history hit at all — fall back to the first other active player.
+    expect(defaultDuelOpponent(players, 1, [hist(99)])).toBe(2);
+  });
   it("returns null with no current identity or no other players", () => {
     expect(defaultDuelOpponent(players, null, [])).toBeNull();
     expect(defaultDuelOpponent([players[0]], 1, [])).toBeNull();
@@ -110,6 +116,10 @@ describe("verdictToAction", () => {
     expect(verdictToAction("unrequested", true)).toBe("summon");
     expect(verdictToAction("unrequested", false)).toBe("configure");
     expect(verdictToAction("notfound", true)).toBe("manual");
+  });
+  it("unknown summons when Seerr is configured, hints configure when it isn't", () => {
+    expect(verdictToAction("unknown", true)).toBe("summon");
+    expect(verdictToAction("unknown", false)).toBe("configure");
   });
 });
 

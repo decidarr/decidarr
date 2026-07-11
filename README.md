@@ -69,6 +69,8 @@ define everything in `compose.yaml` and never open the UI.
 | `JELLYFIN_URL` / `JELLYFIN_API_KEY` | when `MEDIA_SERVER=jellyfin` | Jellyfin connection. |
 | `TMDB_API_KEY` | **yes** | Pool enrichment (posters, genres, runtime, year) for every pool source. Free key at [themoviedb.org](https://www.themoviedb.org/settings/api). |
 | `TRAKT_CLIENT_ID` | no | Enables the Trakt list pool source. |
+| `AUTOLOG_ENABLED` | no | Auto-log watches from media-server playback (default on when `MEDIA_SERVER` is set). `false` disables. |
+| `AUTOLOG_INTERVAL` | no | Auto-log poll cadence in seconds. Default `300`. |
 
 See `compose.yaml` in this repo for a fully commented example with every
 variable present.

@@ -9,6 +9,7 @@ from fastapi import (APIRouter, Depends, FastAPI, File, Form, Header,
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+import autolog
 import config
 import db
 import radarr
@@ -17,7 +18,7 @@ import sonarr
 from media import get_backend
 from pools import custom as custom_pool, refresh as pool_refresh, tmdb as tmdb_pool
 
-VERSION = "1.0.0"
+VERSION = "1.2.0"
 
 
 async def _daily_refresh():
@@ -33,17 +34,30 @@ async def _daily_refresh():
                 pass  # next cycle retries; refresh already never-raises for fetch
 
 
+async def _autolog_loop():
+    while True:
+        # Re-read each cycle so a settings change applies without restart.
+        interval = int(config.resolve("autolog_interval") or autolog.DEFAULT_INTERVAL)
+        await asyncio.sleep(interval)
+        try:
+            await autolog.poll_once()
+        except Exception:
+            pass  # a poll bug degrades auto-log, never the app
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()
     config.seed_settings()
-    task = asyncio.create_task(_daily_refresh())
+    tasks = [asyncio.create_task(_daily_refresh()),
+             asyncio.create_task(_autolog_loop())]
     yield
-    task.cancel()
-    try:
-        await task
-    except asyncio.CancelledError:
-        pass
+    for task in tasks:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(lifespan=lifespan)
@@ -68,6 +82,8 @@ def health():
         "sonarr": bool(config.resolve("sonarr_url") and config.resolve("sonarr_api_key")),
         "media_server": config.resolve("media_server"),
         "pools": pool_flags,
+        "autolog": bool(autolog.enabled() and (b := get_backend())
+                        and b.configured()),
     }
 
 
@@ -123,7 +139,8 @@ class PlayerIn(BaseModel):
 def list_players():
     with closing(db.get_conn()) as conn:
         rows = [dict(r) for r in conn.execute(
-            "SELECT id, name, emoji, active FROM players ORDER BY id")]
+            "SELECT id, name, emoji, active, plex_user, jellyfin_user"
+            " FROM players ORDER BY id")]
     return rows
 
 
@@ -150,6 +167,30 @@ def deactivate_player(player_id: int):
         conn.execute("UPDATE players SET active=0 WHERE id=?", (player_id,))
         conn.commit()
     return {"ok": True}
+
+
+class PlayerPatch(BaseModel):
+    plex_user: str | None = None
+    jellyfin_user: str | None = None
+
+
+@api.patch("/api/players/{player_id}", dependencies=[Depends(require_admin)])
+def patch_player(player_id: int, body: PlayerPatch):
+    fields = body.model_dump(exclude_unset=True)   # omitted ≠ explicit null
+    with closing(db.get_conn()) as conn:
+        if not conn.execute("SELECT 1 FROM players WHERE id=?",
+                            (player_id,)).fetchone():
+            raise HTTPException(404, "player_not_found")
+        if fields:
+            # keys come from the fixed Pydantic model — not injectable
+            sets = ", ".join(f"{k}=?" for k in fields)
+            conn.execute(f"UPDATE players SET {sets} WHERE id=?",
+                         (*fields.values(), player_id))
+            conn.commit()
+        row = conn.execute(
+            "SELECT id, name, emoji, active, plex_user, jellyfin_user"
+            " FROM players WHERE id=?", (player_id,)).fetchone()
+    return dict(row)
 
 
 class EventIn(BaseModel):

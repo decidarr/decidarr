@@ -76,6 +76,12 @@ services:
       # pool source; without it, the Trakt source is hidden in the pool
       # picker.
       TRAKT_CLIENT_ID:
+
+      # Auto-log watches from media-server playback (v1.2). On by default
+      # when MEDIA_SERVER is configured; set "false" to disable.
+      # - AUTOLOG_ENABLED=true
+      # Poll cadence in seconds (default 300).
+      # - AUTOLOG_INTERVAL=300
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:5454/api/health')"]
       interval: 60s

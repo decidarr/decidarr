@@ -223,3 +223,91 @@ def test_plex_recent_watches_isolates_failing_metadata_fetch(db_file):
     c = httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="http://plex:32400")
     plays = asyncio.run(plex.recent_watches(c, "2026-07-12T00:00:00Z"))
     assert [p["title"] for p in plays] == ["The Matrix"]  # bad entry isolated; good survives
+
+
+# --- jellyfin.recent_watches ---
+
+def _jf_rw_client(users, items_by_user, series_by_id):
+    def handler(req):
+        p = req.url.path
+        if p == "/Users":
+            return httpx.Response(200, json=users)
+        if p.startswith("/Users/") and p.endswith("/Items"):
+            uid = p.split("/")[2]
+            ids = req.url.params.get("Ids")
+            if ids:
+                if ids not in series_by_id:
+                    return httpx.Response(404)
+                return httpx.Response(200, json={"Items": [series_by_id[ids]]})
+            return httpx.Response(200, json={"Items": items_by_user.get(uid, [])})
+        raise AssertionError(p)
+    return httpx.AsyncClient(transport=httpx.MockTransport(handler),
+                             base_url="http://jf:8096")
+
+
+def test_jellyfin_recent_watches_movie_and_since_filter(db_file):
+    users = [{"Id": "u1", "Name": "tim"}]
+    items = {"u1": [
+        {"Type": "Movie", "Name": "The Matrix", "ProductionYear": 1999,
+         "ProviderIds": {"Tmdb": "603"},
+         "UserData": {"Played": True,
+                      "LastPlayedDate": "2026-07-12T08:00:00.0000000Z"}},
+        {"Type": "Movie", "Name": "Old Watch", "ProductionYear": 1990,
+         "ProviderIds": {},
+         "UserData": {"Played": True,
+                      "LastPlayedDate": "2026-07-01T00:00:00.0000000Z"}},
+    ]}
+    plays = asyncio.run(jellyfin.recent_watches(
+        _jf_rw_client(users, items, {}), "2026-07-12T00:00:00Z"))
+    assert plays == [{"account": "tim", "media_type": "movie", "tmdb_id": 603,
+                      "title": "The Matrix", "year": 1999,
+                      "played_at": "2026-07-12T08:00:00Z"}]
+
+
+def test_jellyfin_recent_watches_episode_resolves_series(db_file):
+    users = [{"Id": "u1", "Name": "sam"}]
+    items = {"u1": [
+        {"Type": "Episode", "Name": "Pilot", "SeriesId": "s77",
+         "UserData": {"Played": True,
+                      "LastPlayedDate": "2026-07-12T08:00:00.0000000Z"}},
+    ]}
+    series = {"s77": {"Name": "Breaking Bad", "ProductionYear": 2008,
+                      "ProviderIds": {"Tmdb": "1396"}}}
+    plays = asyncio.run(jellyfin.recent_watches(
+        _jf_rw_client(users, items, series), "2026-07-12T00:00:00Z"))
+    assert plays[0] == {"account": "sam", "media_type": "tv", "tmdb_id": 1396,
+                        "title": "Breaking Bad", "year": 2008,
+                        "played_at": "2026-07-12T08:00:00Z"}
+
+
+def test_jellyfin_recent_watches_never_raises(db_file):
+    def handler(req):
+        return httpx.Response(200, content=b"<html>err</html>")
+    c = httpx.AsyncClient(transport=httpx.MockTransport(handler),
+                          base_url="http://jf:8096")
+    assert asyncio.run(jellyfin.recent_watches(c, "2026-07-12T00:00:00Z")) == []
+
+
+def test_jellyfin_recent_watches_isolates_failing_series_lookup(db_file):
+    # One episode's series lookup 404s (validly-keyed SeriesId, but the
+    # metadata endpoint fails); a good movie play in the SAME batch (even a
+    # different user) must still come back. This is non-vacuous: without
+    # per-entry isolation the outer except would catch the 404-triggered
+    # HTTPStatusError and discard the whole batch, returning [].
+    users = [{"Id": "u1", "Name": "tim"}, {"Id": "u2", "Name": "sam"}]
+    items = {
+        "u1": [
+            {"Type": "Movie", "Name": "The Matrix", "ProductionYear": 1999,
+             "ProviderIds": {"Tmdb": "603"},
+             "UserData": {"Played": True,
+                          "LastPlayedDate": "2026-07-12T08:00:00.0000000Z"}},
+        ],
+        "u2": [
+            {"Type": "Episode", "Name": "Pilot", "SeriesId": "missing-series",
+             "UserData": {"Played": True,
+                          "LastPlayedDate": "2026-07-12T08:00:00.0000000Z"}},
+        ],
+    }
+    plays = asyncio.run(jellyfin.recent_watches(
+        _jf_rw_client(users, items, {}), "2026-07-12T00:00:00Z"))
+    assert [p["title"] for p in plays] == ["The Matrix"]

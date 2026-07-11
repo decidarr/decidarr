@@ -74,6 +74,46 @@ def test_watch_409_on_pending_pick(client, seerr_available):
     assert client.post("/api/watch", json={**other, "replace": True}).status_code == 200
 
 
+def test_watch_409_before_request_in_request_branch(client, monkeypatch):
+    # The "not available" branch must run the pending-pick 409 check BEFORE
+    # issuing seerr.request, so we never request-then-discard.
+    import seerr
+    calls = []
+
+    async def fake_direct(client_, tmdb_id, media_type):
+        return {"verdict": "unrequested", "tmdb_id": tmdb_id,
+                "tvdb_id": None, "confidence": "exact"}
+
+    async def fake_request(client_, tmdb_id, media_type, seasons):
+        calls.append(tmdb_id)
+        return {"ok": True, "tmdb_id": tmdb_id, "tvdb_id": None}
+
+    monkeypatch.setattr(seerr, "configured", lambda: True)
+    monkeypatch.setattr(seerr, "make_client", lambda: _FakeClient())
+    monkeypatch.setattr(seerr, "status_direct", fake_direct)
+    monkeypatch.setattr(seerr, "request", fake_request)
+
+    pid = _player(client)
+    item_a = {"player": pid, "media_type": "movie", "item_key": "tmdb:603",
+              "title": "The Matrix", "year": 1999, "tmdb_id": 603}
+    # First unavailable item -> requested, pick now pending.
+    r = client.post("/api/watch", json=item_a)
+    assert r.status_code == 200 and r.json()["requested"] is True
+    assert len(calls) == 1
+
+    # Different unavailable item, same stream, no replace -> 409 AND the
+    # request must NOT have fired again (proves 409 check precedes request).
+    item_b = {**item_a, "item_key": "tmdb:604", "tmdb_id": 604, "title": "R"}
+    r = client.post("/api/watch", json=item_b)
+    assert r.status_code == 409 and r.json()["detail"] == "pending_pick"
+    assert len(calls) == 1  # never request-then-discard
+
+    # With replace -> proceeds and requests again.
+    r = client.post("/api/watch", json={**item_b, "replace": True})
+    assert r.status_code == 200 and r.json()["requested"] is True
+    assert len(calls) == 2
+
+
 def test_watch_503_when_seerr_unconfigured(client):
     pid = _player(client)
     r = client.post("/api/watch", json={

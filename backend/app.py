@@ -280,6 +280,8 @@ async def watch(body: WatchIn):
     tmdb_id = body.tmdb_id or s.get("tmdb_id")
     tvdb_id = s.get("tvdb_id")
     conn = db.get_conn()
+    # raw Seerr verdict on purpose: Summon is only invoked when /api/status
+    # wasn't 'available', so we don't consult the media-server overlay here.
     if s["verdict"] == "available":
         try:
             db.upsert_pick(conn, body.media_type, body.item_key, body.title,

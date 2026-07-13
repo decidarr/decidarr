@@ -28,6 +28,24 @@ def test_connections_put_unknown_key_422(client):
     assert client.put("/api/connections", json={"hacker": "x"}).status_code == 422
 
 
+def test_connections_put_sets_media_server(client, monkeypatch):
+    # The Settings media-server selector writes this key; get_backend() maps
+    # it and /api/health surfaces it. Guards that whole contract.
+    r = client.put("/api/connections", json={"media_server": "plex"})
+    assert r.status_code == 200 and r.json()["skipped"] == []
+    assert config.get_setting("media_server") == "plex"
+    assert client.get("/api/health").json()["media_server"] == "plex"
+    # "None" clears the active backend back to null.
+    client.put("/api/connections", json={"media_server": ""})
+    assert client.get("/api/health").json()["media_server"] in (None, "")
+    # Env-set wins and is read-only: PUT is skipped, GET reports env + value.
+    monkeypatch.setenv("MEDIA_SERVER", "jellyfin")
+    assert client.put("/api/connections", json={"media_server": "plex"}) \
+        .json()["skipped"] == ["media_server"]
+    ms = client.get("/api/connections").json()["media_server"]
+    assert ms["env"] is True and ms["value"] == "jellyfin"
+
+
 def test_connections_read_never_exposes_admin_pin(client):
     config.set_setting("admin_pin", "1234")
     body = client.get("/api/connections").json()

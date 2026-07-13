@@ -1381,6 +1381,13 @@ button {
   font-size: 0.95rem;
 }
 
+.connection-card__hint {
+  margin: 0;
+  color: var(--dim);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
 .connection-card__field {
   display: flex;
   flex-direction: column;

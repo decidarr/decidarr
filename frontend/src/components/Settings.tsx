@@ -16,7 +16,7 @@ import { formatWhen } from "../logic";
 import { S } from "../strings";
 import { toast } from "./Toast";
 import { withAdminPin } from "./AdminPin";
-import type { Player, Stream } from "../types";
+import type { ConnectionsBundle, Player, Stream } from "../types";
 
 export function isActive(p: Player): boolean {
   return p.active === 1 || p.active === true || p.active === undefined;
@@ -545,7 +545,68 @@ export function ConnectionsSection() {
           </div>
         );
       })}
+      <MediaServerCard
+        data={data}
+        onChanged={() => {
+          queryClient.invalidateQueries({ queryKey: ["connections"] });
+          queryClient.invalidateQueries({ queryKey: ["health"] });
+        }}
+      />
     </section>
+  );
+}
+
+/** Picks which media server (if any) is the availability source and auto-log
+ * playback origin. This is the ONLY control that writes the `media_server`
+ * setting — saving Plex/Jellyfin credentials never activates a backend on its
+ * own. Admin-gated like the rest of Connections; read-only when MEDIA_SERVER
+ * is env-set (invariant 11). */
+function MediaServerCard({ data, onChanged }: {
+  data: ConnectionsBundle | undefined;
+  onChanged: () => void;
+}) {
+  const conn = data?.media_server;
+  const envLocked = !!conn?.env;
+  const current = conn?.value ?? "";
+  const [saving, setSaving] = useState(false);
+
+  async function change(value: string) {
+    if (value === current) return;
+    setSaving(true);
+    try {
+      await withAdminPin(() => putConnections({ media_server: value }));
+      toast(S.settings.connections.saved);
+      onChanged();
+    } catch {
+      toast(S.common.writeFailed);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="connection-card">
+      <h4 className="connection-card__title">{S.settings.connections.mediaServer.title}</h4>
+      <p className="connection-card__hint">{S.settings.connections.mediaServer.hint}</p>
+      <label className="connection-card__field">
+        <span className="connection-card__field-label">
+          {S.settings.connections.mediaServer.label}
+        </span>
+        <select
+          className="decade-select"
+          value={current}
+          disabled={envLocked || saving}
+          onChange={(e) => change(e.target.value)}
+        >
+          <option value="">{S.settings.connections.mediaServer.none}</option>
+          <option value="plex">Plex</option>
+          <option value="jellyfin">Jellyfin</option>
+        </select>
+      </label>
+      {envLocked && (
+        <span className="connection-card__env-badge">{S.settings.envLocked}</span>
+      )}
+    </div>
   );
 }
 

@@ -301,6 +301,12 @@ export const S = {
         plex: "Plex",
         jellyfin: "Jellyfin",
       },
+      mediaServer: {
+        title: "Media server",
+        hint: "Which server Decidarr checks for availability and deep links — and where auto-log reads your plays from. Saving Plex or Jellyfin credentials above doesn't switch one on; pick it here.",
+        label: "Active server",
+        none: "None — use Overseerr availability",
+      },
     },
   },
 

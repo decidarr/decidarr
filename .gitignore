@@ -240,3 +240,7 @@ data/
 # .gitkeep preserves the dir for local `uvicorn` runs without STATIC_DIR set.
 backend/static/*
 !backend/static/.gitkeep
+
+# Local secrets (Dockhand API key, etc.) — never commit
+secrets.rtf
+secrets.*

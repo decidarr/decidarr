@@ -18,7 +18,7 @@ import sonarr
 from media import get_backend
 from pools import custom as custom_pool, refresh as pool_refresh, tmdb as tmdb_pool
 
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 
 
 async def _daily_refresh():

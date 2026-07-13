@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Disc3, Swords } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { eligibleItems, pickWinner, spinDurations } from "../logic";
+import { eligibleItems, pickWinner, posterUrl, spinDurations } from "../logic";
 import { postEvent } from "../api";
 import { PickCard } from "./PickCard";
 import { toast } from "./Toast";
@@ -261,10 +261,11 @@ function LoadingPoster() {
 }
 
 function PosterBox({ item, spinning }: { item: PoolItem | null; spinning?: boolean }) {
+  const src = posterUrl(item?.poster);
   return (
     <div className={"poster-box" + (spinning ? " poster-box--spinning" : "")}>
-      {item?.poster ? (
-        <img className="poster-box__img" src={item.poster} alt="" />
+      {src ? (
+        <img className="poster-box__img" src={src} alt="" />
       ) : (
         <div className="poster-box__fallback" />
       )}

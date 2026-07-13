@@ -229,6 +229,20 @@ export function computeFlavorTitles(rows: PlayerStatRow[]): FlavorTitle[] {
   ].filter((t): t is FlavorTitle => t !== null);
 }
 
+const TMDB_IMG_BASE = "https://image.tmdb.org/t/p/w500";
+
+/** Build a usable <img src> from a stored poster value. TMDB enrichment
+ * stores the bare `poster_path` (e.g. "/abc.jpg"), which is NOT a loadable
+ * URL on its own — it needs the TMDB CDN host + a size segment. Bare paths
+ * get that prefix; anything already absolute (a media server may hand us a
+ * full http/https URL) is passed through untouched; null/empty yields null
+ * so the caller renders its poster fallback instead of a broken image. */
+export function posterUrl(poster: string | null | undefined): string | null {
+  if (!poster) return null;
+  if (/^https?:\/\//i.test(poster)) return poster;
+  return `${TMDB_IMG_BASE}${poster.startsWith("/") ? "" : "/"}${poster}`;
+}
+
 /** Human-readable local timestamp for history rows / pool refresh times.
  * Backend timestamps are UTC ISO-8601 (`db.utc_now()`); `Date` parses that
  * natively and formats in the viewer's local timezone. */

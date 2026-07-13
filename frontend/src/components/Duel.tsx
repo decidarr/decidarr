@@ -10,7 +10,7 @@ import { Crown, Eye, RotateCcw, Shuffle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
 import { ApiError, duelWin, getState, postEvent } from "../api";
-import { defaultDuelOpponent, duelCandidates, formatMetaLine, pickWinner, spinDurations } from "../logic";
+import { defaultDuelOpponent, duelCandidates, formatMetaLine, pickWinner, posterUrl, spinDurations } from "../logic";
 import { S } from "../strings";
 import { useSession } from "../store";
 import { toast } from "./Toast";
@@ -319,6 +319,7 @@ function DuelSlot({
 }) {
   const item = state.item;
   const disabled = !item || !player || state.spinning || busy;
+  const posterSrc = posterUrl(item?.poster);
   return (
     <div className="duel-slot">
       {player && (
@@ -328,8 +329,8 @@ function DuelSlot({
       )}
 
       <div className={"poster-box" + (state.spinning ? " poster-box--spinning" : "")}>
-        {item?.poster ? (
-          <img className="poster-box__img" src={item.poster} alt="" />
+        {posterSrc ? (
+          <img className="poster-box__img" src={posterSrc} alt="" />
         ) : (
           <div className="poster-box__fallback" />
         )}

@@ -12,6 +12,7 @@ import {
   formatWhen,
   maskTitle,
   pickWinner,
+  posterUrl,
   progressDisplay,
   verdictToAction,
 } from "./logic";
@@ -47,6 +48,28 @@ describe("eligibleItems", () => {
       .toEqual([items[1]]);
     expect(eligibleItems(items, { ...F, runtimeMin: 100 }, []))
       .toEqual([items[0]]);
+  });
+});
+
+describe("posterUrl", () => {
+  it("prefixes a bare TMDB poster_path with the CDN host + size", () => {
+    expect(posterUrl("/abc.jpg")).toBe(
+      "https://image.tmdb.org/t/p/w500/abc.jpg");
+  });
+  it("tolerates a bare path missing its leading slash", () => {
+    expect(posterUrl("abc.jpg")).toBe(
+      "https://image.tmdb.org/t/p/w500/abc.jpg");
+  });
+  it("passes an already-absolute URL through untouched", () => {
+    expect(posterUrl("https://cdn.example/x.jpg"))
+      .toBe("https://cdn.example/x.jpg");
+    expect(posterUrl("http://plex.local/photo?token=1"))
+      .toBe("http://plex.local/photo?token=1");
+  });
+  it("returns null for null/undefined/empty so the fallback renders", () => {
+    expect(posterUrl(null)).toBeNull();
+    expect(posterUrl(undefined)).toBeNull();
+    expect(posterUrl("")).toBeNull();
   });
 });
 

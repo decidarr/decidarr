@@ -6,7 +6,7 @@ import { Check, Eye, Play, ThumbsDown, Target } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ApiError, getHealth, getState, getStatus, postEvent, postVeto, postWatch } from "../api";
-import { formatMetaLine, maskTitle, verdictToAction } from "../logic";
+import { formatMetaLine, maskTitle, posterUrl, verdictToAction } from "../logic";
 import { S } from "../strings";
 import { toast } from "./Toast";
 import { Progress } from "./Progress";
@@ -227,10 +227,11 @@ export function PickCard({ item, onVetoed, onCommitted, onSeenIt }: PickCardProp
 }
 
 function PosterBox({ item }: { item: PoolItem }) {
+  const src = posterUrl(item.poster);
   return (
     <div className="poster-box">
-      {item.poster ? (
-        <img className="poster-box__img" src={item.poster} alt="" loading="lazy" />
+      {src ? (
+        <img className="poster-box__img" src={src} alt="" loading="lazy" />
       ) : (
         <div className="poster-box__fallback" />
       )}

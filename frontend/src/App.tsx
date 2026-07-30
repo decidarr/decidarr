@@ -13,12 +13,14 @@ import { Onboarding } from "./components/Onboarding";
 import { Settings } from "./components/Settings";
 import { Stage } from "./components/Stage";
 import { Toast } from "./components/Toast";
+import { TopBar } from "./components/TopBar";
 import { TonightCard } from "./components/TonightCard";
 import { Board, History } from "./components/Views";
 import { S } from "./strings";
 import { useSession } from "./store";
+import { useIsDesktop } from "./useIsDesktop";
 
-type View = "spin" | "history" | "board" | "settings";
+export type View = "spin" | "history" | "board" | "settings";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +31,7 @@ function AppShell() {
   const [duelOpen, setDuelOpen] = useState(false);
   const [onboardingSkipped, setOnboardingSkipped] = useState(false);
   const queryClient = useQueryClient();
+  const isDesktop = useIsDesktop();
 
   const stateQuery = useQuery({ queryKey: ["state"], queryFn: getState });
   const poolQuery = useQuery({
@@ -82,12 +85,23 @@ function AppShell() {
 
   return (
     <div className="app">
-      <Header
-        player={player}
-        stream={stream}
-        setStream={setStream}
-        onOpenIdentity={() => setIdentityOpen(true)}
-      />
+      {isDesktop ? (
+        <TopBar
+          player={player}
+          stream={stream}
+          setStream={setStream}
+          view={view}
+          setView={setView}
+          onOpenIdentity={() => setIdentityOpen(true)}
+        />
+      ) : (
+        <Header
+          player={player}
+          stream={stream}
+          setStream={setStream}
+          onOpenIdentity={() => setIdentityOpen(true)}
+        />
+      )}
 
       {currentPick && <TonightCard key={currentPick.item_key} pick={currentPick} />}
 
@@ -112,20 +126,22 @@ function AppShell() {
         {view === "settings" && <Settings />}
       </main>
 
-      <nav className="bottom-nav">
-        <NavButton active={view === "spin"} label={S.nav.spin} onClick={() => setView("spin")}>
-          <Disc3 size={20} aria-hidden="true" />
-        </NavButton>
-        <NavButton active={view === "history"} label={S.nav.history} onClick={() => setView("history")}>
-          <HistoryIcon size={20} aria-hidden="true" />
-        </NavButton>
-        <NavButton active={view === "board"} label={S.nav.board} onClick={() => setView("board")}>
-          <Trophy size={20} aria-hidden="true" />
-        </NavButton>
-        <NavButton active={view === "settings"} label={S.nav.settings} onClick={() => setView("settings")}>
-          <SettingsIcon size={20} aria-hidden="true" />
-        </NavButton>
-      </nav>
+      {!isDesktop && (
+        <nav className="bottom-nav">
+          <NavButton active={view === "spin"} label={S.nav.spin} onClick={() => setView("spin")}>
+            <Disc3 size={20} aria-hidden="true" />
+          </NavButton>
+          <NavButton active={view === "history"} label={S.nav.history} onClick={() => setView("history")}>
+            <HistoryIcon size={20} aria-hidden="true" />
+          </NavButton>
+          <NavButton active={view === "board"} label={S.nav.board} onClick={() => setView("board")}>
+            <Trophy size={20} aria-hidden="true" />
+          </NavButton>
+          <NavButton active={view === "settings"} label={S.nav.settings} onClick={() => setView("settings")}>
+            <SettingsIcon size={20} aria-hidden="true" />
+          </NavButton>
+        </nav>
+      )}
 
       {identityOpen && (
         <IdentityGate

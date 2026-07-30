@@ -77,6 +77,18 @@ button {
   }
 }
 
+/* Two-Pane Theater: the phone column gives way to a full-width room. The
+   bottom nav is gone at this width (TopBar takes over), so the thumb-arc
+   padding goes with it. */
+@media (min-width: 960px) {
+  .app {
+    max-width: 1200px;
+    border-left: none;
+    border-right: none;
+    padding-bottom: var(--s6);
+  }
+}
+
 .app__main {
   flex: 1;
   padding: var(--s4) var(--s4) var(--s5);
@@ -159,6 +171,59 @@ button {
 .marquee__tail {
   color: var(--gold);
   font-style: italic;
+}
+
+/* --- desktop top bar (v1.3 two-pane theater) ---------------------------- */
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: var(--s3) var(--s5);
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 55%, transparent);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.top-bar__lockup {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.top-bar__center {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.top-bar__nav {
+  display: flex;
+  gap: var(--s1);
+}
+
+.top-bar__nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 44px;
+  padding: 0 var(--s3);
+  background: transparent;
+  border: none;
+  border-radius: var(--r-chip);
+  color: var(--dim);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.top-bar__nav-item--active {
+  color: var(--gold);
+  background: rgba(212, 169, 67, 0.12);
 }
 
 /* --- bottom nav --------------------------------------------------------- */

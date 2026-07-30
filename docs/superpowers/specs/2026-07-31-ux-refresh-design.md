@@ -101,12 +101,12 @@ lucky pocket `--green`, holes `--ink`, NO background circle. The files in
 `assets/` and `frontend/public/` (PWA icons) are untouched.
 
 1. **Hero emblem (all widths):** `ReelMark` (~72–98px, drop shadow) sits at
-   the top of the idle hero, above the kicker. During the `spinning` phase
-   the emblem replaces nothing — the poster shuffle stays — but on the
-   idle→spinning transition the emblem spins up (CSS rotation) as it hands
-   off; under `prefers-reduced-motion` it never rotates. It does not render
-   on `landed` (the pick keeps the spotlight) or in the slim ready-line
-   variant.
+   the top of the idle hero, above the kicker, and idles with an
+   imperceptibly slow continuous rotation (~60s/turn; none under
+   `prefers-reduced-motion`) — the wheel is quietly alive. No handoff
+   choreography: the spinning phase keeps the poster shuffle as its
+   theater. The emblem does not render on `landed` (the pick keeps the
+   spotlight) or in the slim ready-line variant.
 2. **Masthead lockup (desktop only):** `ReelMark` at ~30px + the Fraunces
    wordmark, left end of the top bar.
 3. **Ambient watermark (desktop only):** `variant="outline"` (single-colour

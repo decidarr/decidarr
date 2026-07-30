@@ -7,7 +7,7 @@ import { Check, Plus, RefreshCw, Upload, UserX } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
-  ApiError, activatePool, createPlayer, createPool, deactivatePlayer,
+  ApiError, activatePool, backfillSeen, createPlayer, createPool, deactivatePlayer,
   getConnections, getHealth, importPool, listPlayers, listPools, patchPlayer,
   putConnections, refreshPool, testConnection,
 } from "../api";
@@ -16,6 +16,7 @@ import { formatWhen } from "../logic";
 import { S } from "../strings";
 import { toast } from "./Toast";
 import { withAdminPin } from "./AdminPin";
+import { useSession } from "../store";
 import type { ConnectionsBundle, Player, Stream } from "../types";
 
 export function isActive(p: Player): boolean {
@@ -603,9 +604,47 @@ function MediaServerCard({ data, onChanged }: {
           <option value="jellyfin">Jellyfin</option>
         </select>
       </label>
+      {current === "plex" && <BackfillRow />}
       {envLocked && (
         <span className="connection-card__env-badge">{S.settings.envLocked}</span>
       )}
+    </div>
+  );
+}
+
+/** One-tap, re-runnable seen-backfill (v1.2.3). Only rendered when Plex is
+ * the active media server — the backend's watched_keys seam is Plex-only
+ * for now. Result line reports marked/skipped so re-runs read as no-ops. */
+function BackfillRow() {
+  const { playerId } = useSession();
+  const queryClient = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+
+  async function run() {
+    if (playerId == null) return;
+    setBusy(true);
+    setResult(null);
+    try {
+      const r = await withAdminPin(() => backfillSeen(playerId));
+      setResult(r.ok
+        ? S.settings.backfill.result(r.marked_movies, r.marked_tv, r.skipped_seen)
+        : r.message ?? S.settings.backfill.failed);
+      // seen changed -> the wheel's eligible count and state must refresh
+      queryClient.invalidateQueries({ queryKey: ["state"] });
+    } catch {
+      setResult(S.settings.backfill.failed);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="connection-card__field">
+      <button type="button" className="btn-secondary" disabled={busy} onClick={run}>
+        {busy ? S.settings.backfill.running : S.settings.backfill.button}
+      </button>
+      {result && <span className="connection-card__env-badge">{result}</span>}
     </div>
   );
 }

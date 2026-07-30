@@ -103,6 +103,20 @@ export const resetSeen = (stream?: Stream) =>
     body: JSON.stringify({ stream: stream ?? null }),
   });
 
+export interface BackfillResult {
+  ok: boolean;
+  message?: string;
+  marked_movies: number;
+  marked_tv: number;
+  skipped_seen: number;
+}
+
+export const backfillSeen = (player: number) =>
+  call<BackfillResult>("/backfill-seen", {
+    method: "POST",
+    body: JSON.stringify({ player }),
+  });
+
 export const getHealth = () => call<HealthResult>("/health");
 
 export const getStats = () => call<StatsBundle>("/stats");

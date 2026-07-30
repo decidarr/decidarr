@@ -300,6 +300,16 @@ export const S = {
       needsServer: "Configure a media server (Plex or Jellyfin) to use auto-log.",
     },
 
+    backfill: {
+      button: "Import watched from Plex",
+      running: "Checking your library…",
+      result: (movies: number, tv: number, skipped: number) =>
+        `Marked ${movies} film${movies === 1 ? "" : "s"} + ${tv} show${
+          tv === 1 ? "" : "s"
+        } seen.` + (skipped ? ` ${skipped} already seen, skipped.` : ""),
+      failed: "Couldn't reach the media server. Check the connection and try again.",
+    },
+
     connections: {
       title: "Connections",
       test: "Test",

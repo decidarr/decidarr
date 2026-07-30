@@ -67,10 +67,12 @@ Three things, shipping together with two already-fixed v1.3 defects:
 - Rank is enumeration order (Plex has no ranking); titles are deduped by
   `(tmdb_id or normalized title+year)` across sections.
 
-**`GET /api/plex/sections`** (admin-gated) — returns
-`[{key, title, type}]` for movie/show sections so the UI can offer
-checkboxes. Returns `{"ok": false, "message": ...}`-style empty list rather
-than 5xx when Plex is unconfigured or unreachable (invariant #1).
+**`GET /api/plex/sections`** (ungated — invariant #12 gates settings
+*writes* only, and this is a read, like `GET /api/connections`) — returns
+`{"ok": true, "sections": [{key, title, type}]}` for movie/show sections so
+the UI can offer checkboxes. Returns `{"ok": false, "message": ...,
+"sections": []}` rather than 5xx when Plex is unconfigured or unreachable
+(invariant #1).
 
 **Settings → Pools** gains "Plex library" as a source option; choosing it
 fetches the sections and shows a checkbox per section. Create is blocked

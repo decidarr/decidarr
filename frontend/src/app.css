@@ -546,6 +546,25 @@ button {
   padding: var(--s4);
 }
 
+/* The wheel presides over the idle stage, turning imperceptibly — alive,
+   never distracting. Stopped entirely for reduced-motion. */
+.idle-hero__mark {
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.5));
+  animation: reel-drift 60s linear infinite;
+}
+
+@keyframes reel-drift {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .idle-hero__mark {
+    animation: none;
+  }
+}
+
 .idle-hero__kicker {
   font-family: var(--font-mono);
   text-transform: uppercase;

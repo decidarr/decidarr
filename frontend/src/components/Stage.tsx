@@ -9,6 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { activeFilterCount, eligibleItems, heroCountLine, heroReadyLine, pickWinner, posterUrl, spinDurations } from "../logic";
 import { postEvent } from "../api";
 import { PickCard } from "./PickCard";
+import { ReelMark } from "./ReelMark";
 import { toast } from "./Toast";
 import { S } from "../strings";
 import { useSession } from "../store";
@@ -299,6 +300,7 @@ function IdleHero({ pool, seen, poolName, hasActivePool, pickKey }: {
   }
   return (
     <div className="idle-hero">
+      <ReelMark size={84} className="idle-hero__mark" />
       <span className="idle-hero__kicker">
         {poolName ? `${poolName} · ${S.hero.kicker}` : S.hero.kicker}
       </span>

@@ -151,6 +151,21 @@ button {
   color: var(--gold);
 }
 
+/* The masthead wordmark: "Deci" in cream, "darr" as a gold italic tail —
+   the one place the app says its own name out loud. */
+.marquee {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.25rem;
+  color: var(--cream);
+  line-height: 1;
+}
+
+.marquee__tail {
+  color: var(--gold);
+  font-style: italic;
+}
+
 /* --- bottom nav --------------------------------------------------------- */
 
 .bottom-nav {
@@ -742,9 +757,16 @@ button {
 .pick-card__title {
   margin: 0;
   font-size: 1.2rem;
-  /* Blind-mode mask uses the monospace family so the fixed-width block
-     glyphs line up cleanly instead of proportional-font jitter. */
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+/* Blind-mode mask uses the monospace family so the fixed-width block glyphs
+   line up cleanly instead of proportional-font jitter — the display serif
+   is for revealed titles only. */
+.pick-card__title--masked {
   font-family: var(--font-mono);
+  font-weight: 400;
 }
 
 .pick-card__meta {
@@ -927,7 +949,9 @@ button {
 
 .tonight-card__title {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 1.15rem;
+  font-family: var(--font-display);
+  font-weight: 600;
 }
 
 .tonight-card__meta {
@@ -1047,8 +1071,9 @@ button {
 }
 
 .duel-vs {
-  font-family: var(--font-mono);
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
   color: var(--dim);
   flex-shrink: 0;
 }

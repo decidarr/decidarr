@@ -154,14 +154,17 @@ export function PickCard({ item, onVetoed, onCommitted, onSeenIt }: PickCardProp
     ? null
     : verdictToAction(verdict, !!healthQuery.data?.seerr);
 
-  const displayTitle = blind && !revealed ? maskTitle(item.title) : item.title;
+  const masked = blind && !revealed;
+  const displayTitle = masked ? maskTitle(item.title) : item.title;
   const available = verdict === "available";
 
   return (
     <div className="pick-card">
       <PosterBox item={item} />
 
-      <h3 className="pick-card__title">{displayTitle}</h3>
+      <h3 className={"pick-card__title" + (masked ? " pick-card__title--masked" : "")}>
+        {displayTitle}
+      </h3>
       <p className="pick-card__meta">{formatMetaLine(item, stream)}</p>
 
       {available && (

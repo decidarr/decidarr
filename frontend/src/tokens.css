@@ -27,6 +27,8 @@
   --t-spin: 2500ms; --t-respin: 1200ms; --t-fate: 1500ms;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
   --font-body: Inter, system-ui, sans-serif;
+  /* Display face — ritual moments only (marquee, pick titles, duel VS). */
+  --font-display: "Fraunces", Georgia, serif;
 }
 @media (prefers-reduced-motion: reduce) {
   :root { --t-spin: 300ms; --t-respin: 300ms; --t-fate: 300ms; }

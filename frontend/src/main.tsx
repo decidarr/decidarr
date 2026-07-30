@@ -4,6 +4,11 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import { toast } from "./components/Toast";
 import { S } from "./strings";
+// Display face, latin subset only — the app's copy is English, and the
+// full-subset import ships ~160KB of cyrillic/vietnamese/latin-ext the PWA
+// would never use.
+import "@fontsource/fraunces/latin-600.css";
+import "@fontsource/fraunces/latin-600-italic.css";
 import "./tokens.css";
 import "./app.css";
 

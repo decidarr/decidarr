@@ -11,6 +11,15 @@
   --green: #4cb573;
   --cream: #efe6d8;
   --dim: #8d7c90;
+  /* Soft elevation: depth you feel more than see. Applied by prominence —
+     --elev-2 for primary actions, --elev-1 for secondaries/chips,
+     --elev-card for surfaces; --press is the pushed-in state. */
+  --elev-1: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --elev-2: 0 4px 14px rgba(0, 0, 0, 0.45);
+  --elev-card: 0 3px 12px rgba(0, 0, 0, 0.35);
+  --edge-hi: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  --edge-hi-soft: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --press: inset 0 2px 6px rgba(0, 0, 0, 0.35);
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
   --r-chip: 8px; --r-card: 16px;
   --track: 6px;

@@ -109,6 +109,8 @@ button {
   border-radius: var(--r-chip);
   color: var(--cream);
   font-size: 0.85rem;
+  box-shadow: var(--elev-1);
+  transition: transform var(--t-micro), box-shadow var(--t-micro);
 }
 
 .filter-button--active {
@@ -128,6 +130,7 @@ button {
   /* Horizontal-only inset keeps the control's border-box at 44px+2px border
      so it lines up with the 44px identity pill / filter button beside it. */
   padding: 0 2px;
+  box-shadow: var(--elev-1);
 }
 
 .segmented__option {
@@ -213,6 +216,7 @@ button {
   border-bottom: none;
   border-radius: var(--r-card) var(--r-card) 0 0;
   padding: var(--s5) var(--s4);
+  box-shadow: var(--elev-card), var(--edge-hi-soft);
   animation: sheet-up var(--t-move) ease-out;
 }
 
@@ -386,6 +390,8 @@ button {
   border-radius: var(--r-chip);
   color: var(--cream);
   font-size: 0.85rem;
+  box-shadow: var(--elev-1);
+  transition: transform var(--t-micro), box-shadow var(--t-micro);
 }
 
 .chip--active {
@@ -446,6 +452,7 @@ button {
   overflow: hidden;
   background: var(--panel);
   border: 1px solid var(--line);
+  box-shadow: var(--elev-card), var(--edge-hi-soft);
 }
 
 .poster-box--spinning {
@@ -583,6 +590,24 @@ button {
   border: 1px solid var(--gold);
   border-radius: var(--r-chip);
   color: var(--gold);
+  box-shadow: var(--elev-1);
+  transition: transform var(--t-micro), box-shadow var(--t-micro);
+}
+
+/* Pressed states: everything raised sinks toward its shadow. */
+.btn-primary:active:not(:disabled),
+.spin-button:active:not(:disabled) {
+  background: var(--gold-lo);
+  transform: translateY(1px);
+  box-shadow: var(--elev-1), var(--press);
+}
+
+.btn-secondary:active,
+.duel-button:active,
+.btn-veto:active,
+.chip:active {
+  transform: translateY(1px);
+  box-shadow: var(--press);
 }
 
 .btn-link {
@@ -619,7 +644,9 @@ button {
   align-items: center;
   justify-content: center;
   gap: var(--s2);
-  background: var(--gold);
+  background: linear-gradient(180deg, var(--gold-hi), var(--gold-lo));
+  box-shadow: var(--elev-2), var(--edge-hi);
+  transition: transform var(--t-micro), box-shadow var(--t-micro);
   color: var(--ink);
   border: none;
   border-radius: var(--r-chip);
@@ -642,6 +669,8 @@ button {
   color: var(--cream);
   border: 1px solid var(--line);
   border-radius: var(--r-chip);
+  box-shadow: var(--elev-1);
+  transition: transform var(--t-micro), box-shadow var(--t-micro);
 }
 
 /* --- toast --------------------------------------------------------- */
@@ -675,6 +704,7 @@ button {
   background: var(--panel);
   border: 1px solid var(--gold);
   border-radius: var(--r-chip);
+  box-shadow: var(--elev-card), var(--edge-hi-soft);
   animation: toast-up var(--t-move) ease-out;
 }
 
@@ -767,7 +797,9 @@ button {
   align-items: center;
   justify-content: center;
   gap: var(--s2);
-  background: var(--gold);
+  background: linear-gradient(180deg, var(--gold-hi), var(--gold-lo));
+  box-shadow: var(--elev-2), var(--edge-hi);
+  transition: transform var(--t-micro), box-shadow var(--t-micro);
   color: var(--ink);
   border: none;
   border-radius: var(--r-chip);
@@ -790,6 +822,8 @@ button {
   border: 1px solid var(--line);
   border-radius: var(--r-chip);
   color: var(--cream);
+  box-shadow: var(--elev-1);
+  transition: transform var(--t-micro), box-shadow var(--t-micro);
 }
 
 .btn-veto--disabled {
@@ -862,6 +896,7 @@ button {
   background: var(--panel);
   border: 1px solid var(--gold);
   border-radius: var(--r-card);
+  box-shadow: var(--elev-card), var(--edge-hi-soft);
 }
 
 .tonight-card__header {
@@ -1410,6 +1445,7 @@ button {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--r-card);
+  box-shadow: var(--elev-card), var(--edge-hi-soft);
   display: flex;
   flex-direction: column;
   gap: var(--s2);

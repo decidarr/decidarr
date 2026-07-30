@@ -34,7 +34,6 @@ export const S = {
   // --- header / filters sheet ------------------------------------------
   filters: {
     title: "Filters",
-    button: (n: number) => (n > 0 ? `Filters · ${n}` : "Filters"),
     runtime: "Runtime",
     runtimeMinLabel: "Minimum runtime",
     runtimeMaxLabel: "Maximum runtime",
@@ -57,7 +56,6 @@ export const S = {
     includeSeen: "Include already seen",
     blindMode: "Blind mode",
     reset: "Reset",
-    done: "Done",
   },
 
   // --- spin stage --------------------------------------------------------

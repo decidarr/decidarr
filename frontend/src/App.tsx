@@ -5,8 +5,8 @@ import { Disc3, History as HistoryIcon, Settings as SettingsIcon, Trophy } from 
 
 import { getPool, getState } from "./api";
 import { AdminPinPrompt } from "./components/AdminPin";
+import { Console } from "./components/Console";
 import { Duel } from "./components/Duel";
-import { FiltersSheet } from "./components/FiltersSheet";
 import { Header } from "./components/Header";
 import { IdentityGate } from "./components/IdentityGate";
 import { Onboarding } from "./components/Onboarding";
@@ -15,7 +15,6 @@ import { Stage } from "./components/Stage";
 import { Toast } from "./components/Toast";
 import { TonightCard } from "./components/TonightCard";
 import { Board, History } from "./components/Views";
-import { activeFilterCount } from "./logic";
 import { S } from "./strings";
 import { useSession } from "./store";
 
@@ -24,10 +23,9 @@ type View = "spin" | "history" | "board" | "settings";
 const queryClient = new QueryClient();
 
 function AppShell() {
-  const { playerId, stream, filters, setPlayer, setStream } = useSession();
+  const { playerId, stream, setPlayer, setStream } = useSession();
   const [view, setView] = useState<View>("spin");
   const [identityOpen, setIdentityOpen] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [duelOpen, setDuelOpen] = useState(false);
   const [onboardingSkipped, setOnboardingSkipped] = useState(false);
   const queryClient = useQueryClient();
@@ -79,7 +77,6 @@ function AppShell() {
   const player = state.players.find((p) => p.id === playerId) ?? null;
   const pool = poolQuery.data ?? [];
   const seen = state.seen[stream] ?? [];
-  const filterCount = activeFilterCount(filters);
   const hasActivePool = state.pools[stream] != null;
   const currentPick = state.current_picks[stream];
 
@@ -89,25 +86,26 @@ function AppShell() {
         player={player}
         stream={stream}
         setStream={setStream}
-        filterCount={filterCount}
         onOpenIdentity={() => setIdentityOpen(true)}
-        onOpenFilters={() => setFiltersOpen(true)}
       />
 
       {currentPick && <TonightCard key={currentPick.item_key} pick={currentPick} />}
 
       <main className="app__main">
         {view === "spin" && (
-          <Stage
-            pool={pool}
-            seen={seen}
-            poolLoading={poolQuery.isLoading}
-            hasActivePool={hasActivePool}
-            poolName={state.pools[stream]?.name ?? null}
-            pickKey={currentPick?.item_key ?? null}
-            onOpenSettings={() => setView("settings")}
-            onLaunchDuel={() => setDuelOpen(true)}
-          />
+          <>
+            <Stage
+              pool={pool}
+              seen={seen}
+              poolLoading={poolQuery.isLoading}
+              hasActivePool={hasActivePool}
+              poolName={state.pools[stream]?.name ?? null}
+              pickKey={currentPick?.item_key ?? null}
+              onOpenSettings={() => setView("settings")}
+              onLaunchDuel={() => setDuelOpen(true)}
+            />
+            <Console pool={pool} />
+          </>
         )}
         {view === "history" && <History history={state.history} grudges={state.grudges} />}
         {view === "board" && <Board players={state.players} />}
@@ -136,9 +134,6 @@ function AppShell() {
           onSelect={setPlayer}
           onClose={() => setIdentityOpen(false)}
         />
-      )}
-      {filtersOpen && (
-        <FiltersSheet stream={stream} pool={pool} onClose={() => setFiltersOpen(false)} />
       )}
       {duelOpen && (
         <Duel

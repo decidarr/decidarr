@@ -1,7 +1,8 @@
-// App header: identity chip (left, opens IdentityGate as a sheet),
-// Movies/TV segmented control (center), filter button with active-count
-// badge (right).
-import { SlidersHorizontal, User } from "lucide-react";
+// App header (mobile): identity chip (left, opens IdentityGate as a sheet)
+// and the Movies/TV segmented control (right). Filters used to live here
+// behind a button — v1.3 moved them into the always-visible Console on the
+// spin view, so the header is down to identity + stream.
+import { User } from "lucide-react";
 
 import type { Player, Stream } from "../types";
 import { S } from "../strings";
@@ -10,19 +11,10 @@ interface HeaderProps {
   player: Player | null;
   stream: Stream;
   setStream: (s: Stream) => void;
-  filterCount: number;
   onOpenIdentity: () => void;
-  onOpenFilters: () => void;
 }
 
-export function Header({
-  player,
-  stream,
-  setStream,
-  filterCount,
-  onOpenIdentity,
-  onOpenFilters,
-}: HeaderProps) {
+export function Header({ player, stream, setStream, onOpenIdentity }: HeaderProps) {
   return (
     <header className="app-header">
       <button
@@ -52,15 +44,6 @@ export function Header({
           </button>
         ))}
       </div>
-
-      <button
-        type="button"
-        className={"filter-button" + (filterCount > 0 ? " filter-button--active" : "")}
-        onClick={onOpenFilters}
-      >
-        <SlidersHorizontal size={16} aria-hidden="true" />
-        <span>{S.filters.button(filterCount)}</span>
-      </button>
     </header>
   );
 }

@@ -97,8 +97,7 @@ button {
   z-index: 5;
 }
 
-.identity-pill,
-.filter-button {
+.identity-pill {
   display: flex;
   align-items: center;
   gap: var(--s2);
@@ -113,10 +112,6 @@ button {
   transition: transform var(--t-micro), box-shadow var(--t-micro);
 }
 
-.filter-button--active {
-  border-color: var(--gold);
-  color: var(--gold);
-}
 
 .identity-pill__emoji {
   font-size: 1rem;
@@ -322,26 +317,106 @@ button {
   font-size: 1.6rem;
 }
 
-/* --- filters sheet -------------------------------------------------- */
+/* --- the console (v1.3: filters in the open) ---------------------------- */
 
-.filters-section {
-  margin-bottom: var(--s5);
-}
-
-.filters-section--row {
+.console {
+  width: 100%;
+  margin-top: var(--s4);
+  padding: var(--s4);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--elev-card), var(--edge-hi-soft);
   display: flex;
   flex-direction: column;
   gap: var(--s3);
 }
 
-.filters-section__label {
+.console__label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--dim);
+}
+
+.console__count {
+  color: var(--gold);
+  text-transform: none;
+}
+
+.console__presets {
+  display: flex;
+  gap: var(--s2);
+}
+
+.console__preset {
+  flex: 1;
+  min-height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  border-radius: var(--r-chip);
+  color: var(--cream);
+  font-weight: 700;
+  font-size: 0.85rem;
+  box-shadow: var(--elev-1);
+  transition: transform var(--t-micro), box-shadow var(--t-micro);
+}
+
+.console__preset small {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 0.6rem;
+  color: var(--dim);
+}
+
+.console__preset--active {
+  background: linear-gradient(
+    180deg, rgba(227, 188, 88, 0.28), rgba(201, 154, 51, 0.22));
+  border-color: var(--gold-edge);
+  color: var(--gold-hi);
+  box-shadow: var(--elev-1), var(--edge-hi);
+}
+
+.console__preset--active small {
+  color: var(--gold-lo);
+}
+
+.console__preset:active {
+  transform: translateY(1px);
+  box-shadow: var(--press);
+}
+
+.console__range-readout {
   font-family: var(--font-mono);
   font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
   color: var(--dim);
-  margin-bottom: var(--s2);
+  text-align: center;
 }
+
+.console__toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.console__reset {
+  min-height: 44px;
+  padding: 0 var(--s3);
+  background: transparent;
+  border: 1px solid #6b3a30;
+  border-radius: var(--r-chip);
+  color: var(--ember-text);
+}
+
+/* --- filters sheet -------------------------------------------------- */
 
 .range-dual {
   position: relative;
@@ -433,15 +508,6 @@ button {
 .toggle-row input {
   width: 20px;
   height: 20px;
-}
-
-.filters-reset {
-  width: 100%;
-  min-height: 44px;
-  background: transparent;
-  border: 1px solid var(--line);
-  border-radius: var(--r-chip);
-  color: var(--dim);
 }
 
 /* --- stage / spin ----------------------------------------------------- */

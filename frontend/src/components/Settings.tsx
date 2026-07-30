@@ -15,7 +15,7 @@ import type { PoolRow } from "../api";
 import { formatWhen } from "../logic";
 import { S } from "../strings";
 import { toast } from "./Toast";
-import { withAdminPin } from "./AdminPin";
+import { pinAwareMessage, withAdminPin } from "./AdminPin";
 import { useSession } from "../store";
 import type { ConnectionsBundle, Player, Stream } from "../types";
 
@@ -23,14 +23,6 @@ export function isActive(p: Player): boolean {
   return p.active === 1 || p.active === true || p.active === undefined;
 }
 
-/** Turns a `withAdminPin` PIN-outcome detail into player-facing copy —
- * cancelled vs wrong PIN are deliberately distinct — and passes any other
- * detail through untouched (already a message in practice). */
-function pinAwareMessage(detail: string): string {
-  if (detail === "pin_cancelled") return S.settings.pinCancelled;
-  if (detail === "pin_incorrect") return S.settings.pinIncorrect;
-  return detail;
-}
 
 // --- Players --------------------------------------------------------------
 

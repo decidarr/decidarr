@@ -83,6 +83,12 @@ export const S = {
     >,
   },
 
+  // --- list switcher (v1.4) ---------------------------------------------
+  pools: {
+    watchingFrom: "Watching from",
+    switched: (name: string) => `Now watching from ${name}.`,
+  },
+
   // --- empty / unconfigured states --------------------------------------
   emptyWheel: {
     title: "Empty wheel",

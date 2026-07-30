@@ -28,6 +28,16 @@ function requestAdminPin(): Promise<string> {
   });
 }
 
+/** Turns a `withAdminPin` PIN-outcome detail into player-facing copy —
+ * cancelled vs wrong PIN are deliberately distinct — and passes any other
+ * detail through untouched (already a message in practice). Lives here so
+ * every withAdminPin caller (Settings, Console) shares one mapping. */
+export function pinAwareMessage(detail: string): string {
+  if (detail === "pin_cancelled") return S.settings.pinCancelled;
+  if (detail === "pin_incorrect") return S.settings.pinIncorrect;
+  return detail;
+}
+
 /** Runs `fn`; on a 401 `admin_pin_required`, prompts for the PIN, sets it,
  * and retries once. Rather than re-throwing the bare `admin_pin_required`
  * token (which can't distinguish the two failure modes), it surfaces a

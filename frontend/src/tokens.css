@@ -1,11 +1,16 @@
 :root {
-  --ink: #10141a;
-  --panel: #1a212b;
-  --line: #2a3442;
+  --ink: #1e1420;
+  --panel: #2c1f30;
+  --line: #443247;
   --gold: #d4a943;
-  --green: #3fae6a;
-  --cream: #e8e0cc;
-  --dim: #7d8899;
+  --gold-hi: #e3bc58;
+  --gold-lo: #c99a33;
+  --gold-edge: #8a6b1d;
+  --ember: #e0502f;
+  --ember-text: #e8603f;
+  --green: #4cb573;
+  --cream: #efe6d8;
+  --dim: #8d7c90;
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
   --r-chip: 8px; --r-card: 16px;
   --track: 6px;

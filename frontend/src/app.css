@@ -10,7 +10,10 @@ body,
 
 body {
   margin: 0;
-  background: var(--ink);
+  /* Swamp atmosphere: a barely-there vertical pinstripe over the plum room. */
+  background-color: var(--ink);
+  background-image: repeating-linear-gradient(
+    90deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 46px);
   color: var(--cream);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
@@ -240,7 +243,7 @@ button {
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--gold);
+  color: var(--ember-text);
   font-size: 1rem;
 }
 
@@ -263,7 +266,7 @@ button {
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--gold);
+  color: var(--ember-text);
   margin: 0 0 var(--s4);
   font-size: 1.1rem;
 }
@@ -525,7 +528,7 @@ button {
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--gold);
+  color: var(--ember-text);
   font-size: 0.75rem;
 }
 
@@ -558,7 +561,7 @@ button {
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--gold);
+  color: var(--ember-text);
 }
 
 .empty-wheel__body {
@@ -872,7 +875,7 @@ button {
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--gold);
+  color: var(--ember-text);
   font-size: 0.75rem;
 }
 
@@ -1261,7 +1264,7 @@ button {
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--gold);
+  color: var(--ember-text);
   font-size: 0.85rem;
 }
 
@@ -1284,7 +1287,7 @@ button {
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--gold);
+  color: var(--ember-text);
   font-size: 0.95rem;
 }
 
@@ -1491,7 +1494,7 @@ button {
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--gold);
+  color: var(--ember-text);
   font-size: 1.1rem;
   text-align: center;
 }

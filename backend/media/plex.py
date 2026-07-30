@@ -135,3 +135,43 @@ async def recent_watches(client, since):
         return out
     except (httpx.HTTPError, ValueError):
         return []
+
+
+async def watched_keys(client):
+    """Watched titles across every movie/show library section, normalized
+    to {media_type, tmdb_id, title, year}. A movie counts when Plex has any
+    play for it (viewCount >= 1); a show counts when any episode is watched
+    (viewedLeafCount >= 1) — watchable-first parity with "Mark watched".
+    Sections request includeGuids=1 so tmdb ids ride along for exact
+    matching. Never raises: an unreachable server yields [], a bad section
+    is skipped and the rest of the batch survives."""
+    try:
+        r = await client.get("/library/sections")
+        r.raise_for_status()
+        sections = (r.json().get("MediaContainer") or {}).get("Directory") or []
+    except (httpx.HTTPError, ValueError):
+        return []
+    out = []
+    for sec in sections:
+        stype = sec.get("type")
+        if stype not in ("movie", "show"):
+            continue
+        try:
+            r = await client.get(f"/library/sections/{sec.get('key')}/all",
+                                 params={"includeGuids": 1})
+            r.raise_for_status()
+            metas = (r.json().get("MediaContainer") or {}).get("Metadata") or []
+        except (httpx.HTTPError, ValueError):
+            continue
+        for m in metas:
+            watched = ((m.get("viewCount") or 0) >= 1 if stype == "movie"
+                       else (m.get("viewedLeafCount") or 0) >= 1)
+            if not watched:
+                continue
+            out.append({
+                "media_type": "movie" if stype == "movie" else "tv",
+                "tmdb_id": _tmdb_from_guids(m),
+                "title": m.get("title") or "",
+                "year": m.get("year"),
+            })
+    return out

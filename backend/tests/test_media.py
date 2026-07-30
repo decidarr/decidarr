@@ -329,3 +329,69 @@ def test_jellyfin_recent_watches_isolates_failing_series_lookup(db_file):
     plays = asyncio.run(jellyfin.recent_watches(
         _jf_rw_client(users, items, {}), "2026-07-12T00:00:00Z"))
     assert [p["title"] for p in plays] == ["The Matrix"]
+
+
+# --- plex.watched_keys ---
+
+def _watched_client(routes):
+    """MockTransport routed by URL path prefix. `routes` maps path -> JSON
+    payload or an Exception instance to raise."""
+    def handler(req):
+        for prefix, payload in routes.items():
+            if req.url.path.startswith(prefix):
+                if isinstance(payload, Exception):
+                    raise payload
+                return httpx.Response(200, json=payload)
+        return httpx.Response(404, json={})
+    return httpx.AsyncClient(transport=httpx.MockTransport(handler),
+                             base_url="http://plex:32400",
+                             headers={"X-Plex-Token": "tok",
+                                      "Accept": "application/json"})
+
+
+SECTIONS = {"MediaContainer": {"Directory": [
+    {"key": "1", "type": "movie"},
+    {"key": "2", "type": "show"},
+    {"key": "3", "type": "artist"},   # music — must be ignored
+]}}
+
+
+def test_watched_keys_filters_by_watched_flags(db_file):
+    routes = {
+        "/library/sections/1/all": {"MediaContainer": {"Metadata": [
+            {"title": "Lady Bird", "year": 2017, "viewCount": 2,
+             "Guid": [{"id": "tmdb://391713"}]},
+            {"title": "Unwatched Film", "year": 2020, "viewCount": 0},
+            {"title": "Never Played", "year": 2021},
+        ]}},
+        "/library/sections/2/all": {"MediaContainer": {"Metadata": [
+            {"title": "Breaking Bad", "year": 2008, "viewedLeafCount": 12,
+             "Guid": [{"id": "tmdb://1396"}]},
+            {"title": "Unstarted Show", "year": 2019, "viewedLeafCount": 0},
+        ]}},
+        "/library/sections": SECTIONS,
+    }
+    out = asyncio.run(plex.watched_keys(_watched_client(routes)))
+    assert out == [
+        {"media_type": "movie", "tmdb_id": 391713,
+         "title": "Lady Bird", "year": 2017},
+        {"media_type": "tv", "tmdb_id": 1396,
+         "title": "Breaking Bad", "year": 2008},
+    ]
+
+
+def test_watched_keys_isolates_section_failures(db_file):
+    routes = {
+        "/library/sections/1/all": {"MediaContainer": {"Metadata": [
+            {"title": "Lady Bird", "year": 2017, "viewCount": 1},
+        ]}},
+        "/library/sections/2/all": httpx.ConnectError("boom"),
+        "/library/sections": SECTIONS,
+    }
+    out = asyncio.run(plex.watched_keys(_watched_client(routes)))
+    assert [r["title"] for r in out] == ["Lady Bird"]
+
+
+def test_watched_keys_unreachable_returns_empty(db_file):
+    routes = {"/library/sections": httpx.ConnectError("down")}
+    assert asyncio.run(plex.watched_keys(_watched_client(routes))) == []

@@ -97,7 +97,7 @@ export interface Filters {
 export interface PoolInfo {
   id: number;
   name: string;
-  source: "custom" | "tmdb" | "trakt";
+  source: "custom" | "tmdb" | "trakt" | "plex";
   refreshed_at: string | null;
 }
 
@@ -217,7 +217,7 @@ export interface PlayerIn {
 export interface PoolIn {
   name: string;
   media_type: Stream;
-  source: "custom" | "tmdb" | "trakt";
+  source: "custom" | "tmdb" | "trakt" | "plex";
   config: Record<string, unknown>;
 }
 

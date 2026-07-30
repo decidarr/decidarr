@@ -8,7 +8,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   ApiError, activatePool, backfillSeen, createPlayer, createPool, deactivatePlayer,
-  getConnections, getHealth, importPool, listPlayers, listPools, patchPlayer,
+  getConnections, getHealth, getPlexSections, importPool, listPlayers, listPools, patchPlayer,
   putConnections, refreshPool, testConnection,
 } from "../api";
 import type { PoolRow } from "../api";
@@ -187,6 +187,7 @@ export function PoolsSection() {
   const poolsQuery = useQuery({ queryKey: ["pools"], queryFn: listPools });
   const connectionsQuery = useQuery({ queryKey: ["connections"], queryFn: getConnections });
   const traktAvailable = !!connectionsQuery.data?.trakt_client_id?.value;
+  const plexAvailable = !!connectionsQuery.data?.plex_url?.value;
 
   const [errors, setErrors] = useState<Record<number, string>>({});
   const [importResults, setImportResults] = useState<Record<number, string>>({});
@@ -248,6 +249,7 @@ export function PoolsSection() {
           stream={stream}
           pools={pools.filter((p) => p.media_type === stream)}
           traktAvailable={traktAvailable}
+          plexAvailable={plexAvailable}
           errors={errors}
           importResults={importResults}
           onRefresh={refresh}
@@ -261,11 +263,12 @@ export function PoolsSection() {
 }
 
 function PoolStreamPanel({
-  stream, pools, traktAvailable, errors, importResults, onRefresh, onActivate, onUpload, onCreated,
+  stream, pools, traktAvailable, plexAvailable, errors, importResults, onRefresh, onActivate, onUpload, onCreated,
 }: {
   stream: Stream;
   pools: PoolRow[];
   traktAvailable: boolean;
+  plexAvailable: boolean;
   errors: Record<number, string>;
   importResults: Record<number, string>;
   onRefresh: (id: number) => void;
@@ -274,19 +277,33 @@ function PoolStreamPanel({
   onCreated: () => void;
 }) {
   const [name, setName] = useState("");
-  const [source, setSource] = useState<"custom" | "tmdb" | "trakt">("custom");
+  const [source, setSource] = useState<"custom" | "tmdb" | "trakt" | "plex">("custom");
   const [listId, setListId] = useState("");
+  const [plexSections, setPlexSections] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+
+  // Only fetched once someone actually picks the Plex source.
+  const sectionsQuery = useQuery({
+    queryKey: ["plex-sections"],
+    queryFn: getPlexSections,
+    enabled: source === "plex",
+  });
+  const wantType = stream === "movie" ? "movie" : "show";
+  const matchingSections =
+    (sectionsQuery.data?.sections ?? []).filter((s) => s.type === wantType);
 
   async function create(e: FormEvent) {
     e.preventDefault();
     if (!name.trim() || busy) return;
     setBusy(true);
     try {
-      const config = source === "custom" ? {} : { list_id: listId.trim() };
+      const config = source === "custom" ? {}
+        : source === "plex" ? { sections: plexSections }
+        : { list_id: listId.trim() };
       await withAdminPin(() => createPool({ name: name.trim(), media_type: stream, source, config }));
       setName("");
       setListId("");
+      setPlexSections([]);
       onCreated();
     } catch {
       toast(S.common.writeFailed);
@@ -364,13 +381,14 @@ function PoolStreamPanel({
         <select
           className="decade-select"
           value={source}
-          onChange={(e) => setSource(e.target.value as "custom" | "tmdb" | "trakt")}
+          onChange={(e) => setSource(e.target.value as "custom" | "tmdb" | "trakt" | "plex")}
         >
           <option value="custom">{S.settings.pools.sourceCustom}</option>
           <option value="tmdb">{S.settings.pools.sourceTmdb}</option>
           {traktAvailable && <option value="trakt">{S.settings.pools.sourceTrakt}</option>}
+          {plexAvailable && <option value="plex">{S.settings.pools.sourcePlex}</option>}
         </select>
-        {source !== "custom" && (
+        {(source === "tmdb" || source === "trakt") && (
           <input
             className="decade-select"
             placeholder={S.settings.pools.listId}
@@ -378,7 +396,33 @@ function PoolStreamPanel({
             onChange={(e) => setListId(e.target.value)}
           />
         )}
-        <button type="submit" className="btn-primary" disabled={busy || !name.trim()}>
+        {source === "plex" && (
+          <div className="pool-plex-sections">
+            <div className="console__label">{S.settings.pools.plexSections}</div>
+            {matchingSections.length === 0 ? (
+              <p className="settings-empty">{S.settings.pools.plexNoSections}</p>
+            ) : (
+              matchingSections.map((s) => (
+                <label key={s.key} className="toggle-row">
+                  <input
+                    type="checkbox"
+                    checked={plexSections.includes(s.key)}
+                    onChange={(e) =>
+                      setPlexSections((cur) => e.target.checked
+                        ? [...cur, s.key]
+                        : cur.filter((k) => k !== s.key))}
+                  />
+                  {s.title}
+                </label>
+              ))
+            )}
+          </div>
+        )}
+        <button
+          type="submit"
+          className="btn-primary"
+          disabled={busy || !name.trim() || (source === "plex" && plexSections.length === 0)}
+        >
           <Plus size={16} aria-hidden="true" />
           {S.settings.pools.create}
         </button>

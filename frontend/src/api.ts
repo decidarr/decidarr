@@ -161,6 +161,16 @@ export const activatePool = (id: number) =>
 export const refreshPool = (id: number) =>
   call<Record<string, unknown>>(`/pools/${id}/refresh`, { method: "POST" });
 
+export interface PlexSection {
+  key: string;
+  title: string;
+  type: "movie" | "show";
+}
+
+export const getPlexSections = () =>
+  call<{ ok: boolean; message?: string; sections: PlexSection[] }>(
+    "/plex/sections");
+
 export const importPool = async (
   poolId: number,
   file: File,

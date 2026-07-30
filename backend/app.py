@@ -554,6 +554,68 @@ def put_connections(body: dict):
     return {"ok": True, "skipped": skipped}
 
 
+class BackfillSeenIn(BaseModel):
+    player: int
+
+
+@api.post("/api/backfill-seen", dependencies=[Depends(require_admin)])
+async def backfill_seen(body: BackfillSeenIn):
+    """One-tap, re-runnable import: mark active-pool items the media server
+    says are watched as seen (source='auto') so the wheel stops offering
+    them. seen-only by design — the scoreboard keeps meaning "watched
+    through Decidarr" (see 2026-07-20-watched-backfill-design.md)."""
+    backend = get_backend()
+    watched_fn = getattr(backend, "watched_keys", None)
+    if backend is None or watched_fn is None or not backend.configured():
+        return {"ok": False, "message": "No media server configured.",
+                "marked_movies": 0, "marked_tv": 0, "skipped_seen": 0}
+
+    async with backend.make_client() as client:
+        plays = await watched_fn(client)
+
+    marked = {"movie": 0, "tv": 0}
+    skipped = 0
+    with closing(db.get_conn()) as conn:
+        if not conn.execute("SELECT 1 FROM players WHERE id=?",
+                            (body.player,)).fetchone():
+            raise HTTPException(404, "player_not_found")
+        # exact-only matchable maps over BOTH streams' active pools — the
+        # same shape autolog._matchable builds. No fuzzy matching: a wrong
+        # guess would silently remove an unwatched title from the wheel.
+        by_tmdb, by_title = {}, {}
+        for r in conn.execute(
+                "SELECT i.media_type, i.tmdb_id, i.title, i.year FROM items i"
+                " JOIN pools p ON p.id = i.pool_id WHERE p.active=1"):
+            entry = (db.item_key(r["tmdb_id"], r["title"], r["year"]),
+                     r["title"], r["year"])
+            if r["tmdb_id"] is not None:
+                by_tmdb[(r["media_type"], r["tmdb_id"])] = entry
+            by_title[(r["media_type"], db.normalize(r["title"]),
+                      r["year"])] = entry
+        seen = {mt: db.seen_keys(conn, mt) for mt in ("movie", "tv")}
+        for play in plays:
+            mt = play["media_type"]
+            entry = None
+            if play.get("tmdb_id") is not None:
+                entry = by_tmdb.get((mt, play["tmdb_id"]))
+            if entry is None and play.get("title"):
+                entry = by_title.get((mt, db.normalize(play["title"]),
+                                      play.get("year")))
+            if entry is None:
+                continue                      # not in the wheel's world
+            key, title, year = entry
+            if key in seen[mt]:
+                skipped += 1
+                continue
+            db.log_event(conn, body.player, mt, key, title, year, "seen",
+                         source="auto")
+            seen[mt].add(key)                 # also dedupes within this run
+            marked[mt] += 1
+        conn.commit()
+    return {"ok": True, "marked_movies": marked["movie"],
+            "marked_tv": marked["tv"], "skipped_seen": skipped}
+
+
 TEST_PROBES = {
     "seerr": ("seerr", "/api/v1/status"),
     "radarr": ("radarr", "/api/v3/system/status"),

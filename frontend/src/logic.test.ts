@@ -3,6 +3,7 @@ import {
   PROGRESS_POLL_CAP,
   STUCK_SEARCHING_MS,
   activeFilterCount,
+  activePreset,
   buildPlayerStatRows,
   computeFlavorTitles,
   defaultDuelOpponent,
@@ -330,5 +331,33 @@ describe("heroReadyLine", () => {
     expect(heroReadyLine(213)).toBe("Another 213 in the wheel.");
     expect(heroReadyLine(1)).toBe("One more in the wheel.");
     expect(heroReadyLine(0)).toBe("Nothing else in the wheel right now.");
+  });
+});
+
+describe("activePreset", () => {
+  const F0 = { runtimeMin: 0, runtimeMax: Infinity, genres: [], decade: null,
+               includeSeen: false };
+  it("recognizes each named preset per stream", () => {
+    expect(activePreset({ ...F0, runtimeMin: 40, runtimeMax: 110 }, "movie"))
+      .toBe("schoolNight");
+    expect(activePreset({ ...F0, runtimeMin: 110, runtimeMax: 210 }, "movie"))
+      .toBe("committed");
+    expect(activePreset({ ...F0, runtimeMin: 15, runtimeMax: 35 }, "tv"))
+      .toBe("schoolNight");
+    expect(activePreset({ ...F0, runtimeMin: 35, runtimeMax: 90 }, "tv"))
+      .toBe("committed");
+  });
+  it("unbounded range is Whatever, including null-coalesced bounds", () => {
+    expect(activePreset(F0, "movie")).toBe("whatever");
+    // a localStorage round-trip turns Infinity into null — same as unbounded
+    expect(activePreset({ ...F0, runtimeMin: null, runtimeMax: null }, "movie"))
+      .toBe("whatever");
+  });
+  it("any other range matches nothing", () => {
+    expect(activePreset({ ...F0, runtimeMin: 40, runtimeMax: 120 }, "movie"))
+      .toBeNull();
+    // a movie preset's range is not a tv preset
+    expect(activePreset({ ...F0, runtimeMin: 40, runtimeMax: 110 }, "tv"))
+      .toBeNull();
   });
 });

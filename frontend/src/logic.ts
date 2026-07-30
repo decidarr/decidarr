@@ -3,6 +3,7 @@ import type {
   Stream, Verdict,
 } from "./types";
 import { S } from "./strings";
+import { PRESETS } from "./store";
 
 export function eligibleItems(items: PoolItem[], f: Filters,
                               seen: string[]): PoolItem[] {
@@ -241,6 +242,24 @@ export function posterUrl(poster: string | null | undefined): string | null {
   if (!poster) return null;
   if (/^https?:\/\//i.test(poster)) return poster;
   return `${TMDB_IMG_BASE}${poster.startsWith("/") ? "" : "/"}${poster}`;
+}
+
+export type PresetKey = "schoolNight" | "committed" | "whatever";
+
+/** Which Console preset button matches the current runtime range exactly.
+ * "Whatever" is the unbounded range — nulls count as unbounded, since a
+ * localStorage round-trip turns Infinity into null. Any hand-tuned range
+ * matches nothing, which is what un-highlights the presets the moment the
+ * player drags the slider. */
+export function activePreset(f: Filters, stream: Stream): PresetKey | null {
+  const min = f.runtimeMin ?? 0;
+  const max = f.runtimeMax ?? Infinity;
+  if (min === 0 && max === Infinity) return "whatever";
+  for (const key of ["schoolNight", "committed"] as const) {
+    const [lo, hi] = PRESETS[stream][key];
+    if (min === lo && max === hi) return key;
+  }
+  return null;
 }
 
 /** Human-readable local timestamp for history rows / pool refresh times.

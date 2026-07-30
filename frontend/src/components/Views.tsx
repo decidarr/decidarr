@@ -176,3 +176,88 @@ export function Board({ players }: BoardProps) {
     </div>
   );
 }
+
+// --- desktop rail variants (v1.3 two-pane theater) ------------------------
+
+const RAIL_HISTORY_ROWS = 6;
+const RAIL_GRUDGE_ROWS = 2;
+
+/** Compact history + grudges for the desktop rail: the latest few rows for
+ * the current stream, no collapsibles — the full History view is still one
+ * nav click away. Reads the already-fetched /api/state, no new requests. */
+export function HistoryRail({ history, grudges }: HistoryProps) {
+  const { stream } = useSession();
+  const rows = history
+    .filter((h) => h.media_type === stream)
+    .slice(0, RAIL_HISTORY_ROWS);
+  const topGrudges = grudges
+    .filter((g) => g.media_type === stream)
+    .slice(0, RAIL_GRUDGE_ROWS);
+
+  return (
+    <section className="rail-card">
+      <div className="rail-card__label rail-card__label--ember">{S.history.railTitle}</div>
+      {rows.length === 0 ? (
+        <p className="settings-empty">{S.history.empty}</p>
+      ) : (
+        <ul className="history-list">
+          {rows.map((h, i) => (
+            <li key={`${h.ts}-${h.item_key}-${i}`} className="history-list__row">
+              <span className="history-list__title">{h.title}</span>
+              <span className="history-list__meta">
+                {h.player_name} · {S.history.action[h.action]} · {formatWhen(h.ts)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {topGrudges.length > 0 && (
+        <ul className="history-list">
+          {topGrudges.map((g) => (
+            <li key={`${g.media_type}:${g.item_key}`} className="history-list__row">
+              <span className="history-list__title">{g.title}</span>
+              <span className="history-list__meta history-list__meta--grudge">
+                {S.history.grudgeCount(g.count)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** Compact scoreboard for the desktop rail: per-player watched counts and
+ * the reigning Duel Champion — never a 0-0 crown, since computeFlavorTitles
+ * only crowns a category somebody has actually scored in. */
+export function BoardStrip({ players }: BoardProps) {
+  const statsQuery = useQuery({ queryKey: ["stats"], queryFn: getStats });
+  if (!statsQuery.data) return null;
+
+  const rows = buildPlayerStatRows(players, statsQuery.data.combined);
+  const champion = computeFlavorTitles(rows)
+    .find((t) => t.label === S.flavorTitles.duelChampion);
+  const championName = champion
+    ? rows.find((r) => r.id === champion.playerId)?.name ?? null
+    : null;
+
+  return (
+    <section className="rail-card">
+      <div className="rail-card__label">{S.board.railTitle}</div>
+      <div className="board-strip">
+        {rows.map((r) => (
+          <div key={r.id} className="board-strip__player">
+            <span className="board-strip__name">{r.name}</span>
+            <span className="board-strip__stat">{r.watched}</span>
+            <span className="board-strip__cap">{S.board.stat.watched}</span>
+          </div>
+        ))}
+      </div>
+      {championName && (
+        <div className="board-strip__champion">
+          {S.flavorTitles.duelChampion}: {championName}
+        </div>
+      )}
+    </section>
+  );
+}

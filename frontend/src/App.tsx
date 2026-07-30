@@ -15,7 +15,8 @@ import { Stage } from "./components/Stage";
 import { Toast } from "./components/Toast";
 import { TopBar } from "./components/TopBar";
 import { TonightCard } from "./components/TonightCard";
-import { Board, History } from "./components/Views";
+import { Board, BoardStrip, History, HistoryRail } from "./components/Views";
+import { ReelMark } from "./components/ReelMark";
 import { S } from "./strings";
 import { useSession } from "./store";
 import { useIsDesktop } from "./useIsDesktop";
@@ -103,10 +104,36 @@ function AppShell() {
         />
       )}
 
-      {currentPick && <TonightCard key={currentPick.item_key} pick={currentPick} />}
+      {/* Desktop moves the tonight card into the rail; mobile keeps it
+          pinned above the stage. */}
+      {!isDesktop && currentPick && (
+        <TonightCard key={currentPick.item_key} pick={currentPick} />
+      )}
 
       <main className="app__main">
-        {view === "spin" && (
+        {view === "spin" && (isDesktop ? (
+          <div className="theater">
+            <div className="theater__stage">
+              <Stage
+                pool={pool}
+                seen={seen}
+                poolLoading={poolQuery.isLoading}
+                hasActivePool={hasActivePool}
+                poolName={state.pools[stream]?.name ?? null}
+                pickKey={currentPick?.item_key ?? null}
+                onOpenSettings={() => setView("settings")}
+                onLaunchDuel={() => setDuelOpen(true)}
+              />
+            </div>
+            <div className="theater__rail">
+              <ReelMark variant="outline" size={380} className="theater__watermark" />
+              <Console pool={pool} />
+              {currentPick && <TonightCard key={currentPick.item_key} pick={currentPick} />}
+              <HistoryRail history={state.history} grudges={state.grudges} />
+              <BoardStrip players={state.players} />
+            </div>
+          </div>
+        ) : (
           <>
             <Stage
               pool={pool}
@@ -120,7 +147,7 @@ function AppShell() {
             />
             <Console pool={pool} />
           </>
-        )}
+        ))}
         {view === "history" && <History history={state.history} grudges={state.grudges} />}
         {view === "board" && <Board players={state.players} />}
         {view === "settings" && <Settings />}

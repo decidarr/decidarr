@@ -382,6 +382,134 @@ button {
   font-size: 1.6rem;
 }
 
+/* --- two-pane theater (desktop >=960px) --------------------------------- */
+
+.theater {
+  display: grid;
+  grid-template-columns: 1.65fr 1fr;
+  gap: var(--s5);
+  align-items: start;
+}
+
+.theater__stage .stage {
+  padding: var(--s5) var(--s4);
+  background: color-mix(in srgb, var(--panel) 40%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--elev-card), var(--edge-hi-soft);
+}
+
+.theater__rail {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+/* The reel, ghosted into the room behind the rail — atmosphere, not UI. */
+.theater__watermark {
+  position: absolute;
+  right: -90px;
+  top: 20px;
+  opacity: 0.05;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.theater__rail > *:not(.theater__watermark) {
+  position: relative;
+  z-index: 1;
+}
+
+/* The console already carries its own top margin for the mobile stack —
+   inside the rail the flex gap does that job. */
+.theater__rail .console {
+  margin-top: 0;
+}
+
+.rail-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: var(--s4);
+  box-shadow: var(--elev-card), var(--edge-hi-soft);
+}
+
+.rail-card__label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--dim);
+  margin-bottom: var(--s3);
+}
+
+.rail-card__label--ember {
+  color: var(--ember-text);
+}
+
+.history-list__meta--grudge {
+  color: var(--ember-text);
+}
+
+.board-strip {
+  display: flex;
+  gap: var(--s3);
+}
+
+.board-strip__player {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-chip);
+  padding: var(--s3) var(--s2);
+}
+
+.board-strip__name {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--green);
+}
+
+.board-strip__stat {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.board-strip__cap {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+}
+
+.board-strip__champion {
+  margin-top: var(--s3);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--gold);
+}
+
+/* The tonight card sizes itself for the mobile column; in the rail it fills
+   the track like every other card. */
+.theater__rail .tonight-card {
+  margin: 0;
+}
+
+/* Non-spin views get a comfortable reading column rather than full width. */
+@media (min-width: 960px) {
+  .history-view,
+  .board-view,
+  .settings-view {
+    max-width: 760px;
+    margin: 0 auto;
+  }
+}
+
 /* --- the console (v1.3: filters in the open) ---------------------------- */
 
 .console {

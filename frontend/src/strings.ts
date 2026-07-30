@@ -206,10 +206,12 @@ export const S = {
     },
     grudgeCount: (n: number) => `Vetoed ${n} time${n === 1 ? "" : "s"}`,
     autoTag: "auto",
+    railTitle: "History & Grudges",
   },
 
   board: {
     title: "Board",
+    railTitle: "Board",
     seenTotal: "Titles seen",
     loading: "Tallying the scores…",
     empty: "Nobody's spun yet.",

@@ -30,7 +30,9 @@ def _playable(meta: dict, media_type: str) -> bool:
 async def availability(client, item, media_type):
     want_type = "show" if media_type == "tv" else "movie"
     try:
-        r = await client.get("/search", params={"query": item["title"]})
+        r = await client.get("/search",
+                             params={"query": item["title"],
+                                     "includeGuids": 1})
         r.raise_for_status()
         metas = [m for m in (r.json().get("MediaContainer", {})
                              .get("Metadata") or [])

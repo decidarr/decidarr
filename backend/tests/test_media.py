@@ -35,6 +35,24 @@ def test_plex_title_year_match_is_fuzzy(db_file):
     v, conf, key = asyncio.run(plex.availability(_plex_client(payload), ITEM, "movie"))
     assert (v, conf) == ("available", "fuzzy")
 
+def test_plex_search_requests_guids(db_file):
+    # Real Plex omits the Guid[] external-id array from /search unless the
+    # request carries includeGuids=1 — without it the exact-tmdb rung can
+    # never fire and every verdict degrades to "fuzzy" (live-verified).
+    seen_urls = []
+    def handler(req):
+        seen_urls.append(str(req.url))
+        return httpx.Response(200, json={"MediaContainer": {"Metadata": [
+            {"ratingKey": "42", "title": "The Matrix", "year": 1999,
+             "type": "movie", "Guid": [{"id": "tmdb://603"}]}]}})
+    c = httpx.AsyncClient(transport=httpx.MockTransport(handler),
+                          base_url="http://plex:32400",
+                          headers={"X-Plex-Token": "tok",
+                                   "Accept": "application/json"})
+    v, conf, key = asyncio.run(plex.availability(c, ITEM, "movie"))
+    assert (v, conf, key) == ("available", "exact", "42")
+    assert "includeGuids=1" in seen_urls[0]
+
 def test_plex_show_needs_playable_episode(db_file):
     show = {"ratingKey": "9", "title": "Breaking Bad", "year": 2008,
             "type": "show", "leafCount": 0, "Guid": [{"id": "tmdb://1396"}]}

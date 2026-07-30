@@ -634,8 +634,8 @@ function BackfillRow() {
         // seen changed -> the wheel's eligible count and state must refresh
         queryClient.invalidateQueries({ queryKey: ["state"] });
       }
-    } catch {
-      setResult(S.settings.backfill.failed);
+    } catch (e) {
+      setResult(e instanceof ApiError ? pinAwareMessage(e.detail) : S.settings.backfill.failed);
     } finally {
       setBusy(false);
     }

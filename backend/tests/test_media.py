@@ -392,6 +392,6 @@ def test_watched_keys_isolates_section_failures(db_file):
     assert [r["title"] for r in out] == ["Lady Bird"]
 
 
-def test_watched_keys_unreachable_returns_empty(db_file):
+def test_watched_keys_unreachable_returns_none(db_file):
     routes = {"/library/sections": httpx.ConnectError("down")}
-    assert asyncio.run(plex.watched_keys(_watched_client(routes))) == []
+    assert asyncio.run(plex.watched_keys(_watched_client(routes))) is None

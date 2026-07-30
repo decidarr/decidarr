@@ -31,9 +31,9 @@ interface StageProps {
   hasActivePool: boolean;
   /** Active pool's display name for the hero kicker (null: no active pool). */
   poolName: string | null;
-  /** True when tonight's pick exists for the current stream — the hero
-   * defers to the TonightCard with a slim ready-line. */
-  hasPick: boolean;
+  /** Tonight's committed pick key for the current stream (null: none) — the
+   * hero's slim variant subtracts it from the count. */
+  pickKey: string | null;
   onOpenSettings: () => void;
   onLaunchDuel?: () => void;
 }
@@ -50,7 +50,7 @@ export function Stage({
   poolLoading,
   hasActivePool,
   poolName,
-  hasPick,
+  pickKey,
   onOpenSettings,
   onLaunchDuel,
 }: StageProps) {
@@ -212,7 +212,7 @@ export function Stage({
               seen={seen}
               poolName={poolName}
               hasActivePool={hasActivePool}
-              hasPick={hasPick}
+              pickKey={pickKey}
             />
           )
         )}
@@ -276,21 +276,24 @@ export function Stage({
  * a slim ready-line under a committed TonightCard; the pool-missing nudge
  * when no pool is active. The count comes from the same eligibleItems()
  * call spin() uses, so the number and the wheel can never disagree. */
-function IdleHero({ pool, seen, poolName, hasActivePool, hasPick }: {
+function IdleHero({ pool, seen, poolName, hasActivePool, pickKey }: {
   pool: PoolItem[];
   seen: string[];
   poolName: string | null;
   hasActivePool: boolean;
-  hasPick: boolean;
+  pickKey: string | null;
 }) {
   const { stream, filters } = useSession();
-  const n = eligibleItems(pool, filters, seen).length;
+  const eligible = eligibleItems(pool, filters, seen);
+  const n = eligible.length;
   const filtersActive = activeFilterCount(filters) > 0;
+  const hasPick = pickKey != null;
 
   if (hasPick) {
+    const rest = eligible.some((i) => i.item_key === pickKey) ? n - 1 : n;
     return (
       <div className="idle-hero idle-hero--slim">
-        <p className="idle-hero__count">{heroReadyLine(n)}</p>
+        <p className="idle-hero__count">{heroReadyLine(rest)}</p>
       </div>
     );
   }

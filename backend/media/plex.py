@@ -143,14 +143,15 @@ async def watched_keys(client):
     play for it (viewCount >= 1); a show counts when any episode is watched
     (viewedLeafCount >= 1) — watchable-first parity with "Mark watched".
     Sections request includeGuids=1 so tmdb ids ride along for exact
-    matching. Never raises: an unreachable server yields [], a bad section
-    is skipped and the rest of the batch survives."""
+    matching. Never raises: an unreachable server yields None; a reachable
+    server with nothing watched yields []. A bad section is skipped and the
+    rest of the batch survives."""
     try:
         r = await client.get("/library/sections")
         r.raise_for_status()
         sections = (r.json().get("MediaContainer") or {}).get("Directory") or []
     except (httpx.HTTPError, ValueError):
-        return []
+        return None
     out = []
     for sec in sections:
         stype = sec.get("type")

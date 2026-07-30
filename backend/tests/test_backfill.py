@@ -125,3 +125,64 @@ def test_backfill_respects_admin_pin(client, monkeypatch):
     config.set_setting("admin_pin", "1234")
     r = client.post("/api/backfill-seen", json={"player": 1})
     assert r.status_code == 401
+
+
+def test_backfill_unreachable_is_ok_false_not_500(client, monkeypatch):
+    _seed_default_pool()
+    monkeypatch.setenv("MEDIA_SERVER", "plex")
+    monkeypatch.setenv("PLEX_URL", "http://plex:32400")
+    monkeypatch.setenv("PLEX_TOKEN", "tok")
+
+    def handler(req):
+        raise httpx.ConnectError("down")
+
+    monkeypatch.setattr(plex, "make_client", lambda: httpx.AsyncClient(
+        transport=httpx.MockTransport(handler),
+        base_url="http://plex:32400"))
+    client.post("/api/players", json={"name": "Tim"})
+    r = client.post("/api/backfill-seen", json={"player": 1})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is False
+    assert "unreachable" in body["message"].lower()
+    assert body["marked_movies"] == 0
+    assert body["marked_tv"] == 0
+    assert body["skipped_seen"] == 0
+
+
+def test_backfill_never_touches_history_or_watched_stats(client, monkeypatch):
+    """Backfilled seen events must never appear in History or count as
+    watched on the Board — the spec's scoreboard promise as a regression
+    tripwire."""
+    _seed_default_pool()
+    _plex_env(monkeypatch, ROUTES)
+    client.post("/api/players", json={"name": "Tim"})
+    r = client.post("/api/backfill-seen", json={"player": 1})
+    assert r.json()["marked_movies"] == 2
+
+    state = client.get("/api/state").json()
+    assert state["history"] == []
+
+    stats = client.get("/api/stats").json()
+    assert stats["combined"].get("Tim", {}).get("watched", 0) == 0
+    assert stats["seen_total"] == 2
+
+
+def test_backfill_marks_tv_shows(client, monkeypatch):
+    _seed_pool("tv", [(1396, "Breaking Bad", 2008)])
+    tv_routes = {
+        "/library/sections/2/all": {"MediaContainer": {"Metadata": [
+            {"title": "Breaking Bad", "year": 2008, "viewedLeafCount": 3,
+             "Guid": [{"id": "tmdb://1396"}]},
+        ]}},
+        "/library/sections": {"MediaContainer": {"Directory": [
+            {"key": "2", "type": "show"}]}},
+    }
+    _plex_env(monkeypatch, tv_routes)
+    client.post("/api/players", json={"name": "Tim"})
+    r = client.post("/api/backfill-seen", json={"player": 1})
+    body = r.json()
+    assert body["marked_tv"] == 1
+    assert body["marked_movies"] == 0
+    with db.get_conn() as conn:
+        assert db.seen_keys(conn, "tv") == {"tmdb:1396"}

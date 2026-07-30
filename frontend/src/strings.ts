@@ -69,6 +69,7 @@ export const S = {
       `Choosing from ${n} unseen ${noun} that fit your filters.`,
     ready: (n: number) => `Another ${n} in the wheel.`,
     readyOne: "One more in the wheel.",
+    readyNone: "Nothing else in the wheel right now.",
     nouns: { movie: ["film", "films"], tv: ["show", "shows"] } as Record<
       "movie" | "tv",
       [string, string]
@@ -202,7 +203,7 @@ export const S = {
 
   board: {
     title: "Board",
-    seenTotal: "Total watched",
+    seenTotal: "Titles seen",
     loading: "Tallying the scores…",
     empty: "Nobody's spun yet.",
     stat: {

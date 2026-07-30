@@ -269,5 +269,6 @@ export function heroCountLine(
 
 /** Slim variant shown under a committed tonight pick. */
 export function heroReadyLine(n: number): string {
+  if (n <= 0) return S.hero.readyNone;
   return n === 1 ? S.hero.readyOne : S.hero.ready(n);
 }

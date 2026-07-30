@@ -104,7 +104,7 @@ function AppShell() {
             poolLoading={poolQuery.isLoading}
             hasActivePool={hasActivePool}
             poolName={state.pools[stream]?.name ?? null}
-            hasPick={!!currentPick}
+            pickKey={currentPick?.item_key ?? null}
             onOpenSettings={() => setView("settings")}
             onLaunchDuel={() => setDuelOpen(true)}
           />

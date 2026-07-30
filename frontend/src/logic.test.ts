@@ -329,5 +329,6 @@ describe("heroReadyLine", () => {
   it("counts the rest of the wheel", () => {
     expect(heroReadyLine(213)).toBe("Another 213 in the wheel.");
     expect(heroReadyLine(1)).toBe("One more in the wheel.");
+    expect(heroReadyLine(0)).toBe("Nothing else in the wheel right now.");
   });
 });

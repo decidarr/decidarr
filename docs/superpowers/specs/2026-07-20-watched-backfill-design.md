@@ -19,7 +19,7 @@ backend-generic so Jellyfin can implement the same method later.
 
 | Question | Decision |
 |---|---|
-| Event type | **`seen` only, `source='auto'`** — never `watched`. The wheel stops offering the title (the actual complaint) but the scoreboard and History keep meaning "things that happened through Decidarr". Auto-log's "historical plays are never mass-imported into the scoreboard" promise stands. (Schema verified: `action='seen'` + `source='auto'` are both legal today; no migration.) |
+| Event type | **`seen` only, `source='auto'`** — never `watched`. The wheel stops offering the title (the actual complaint) but the scoreboard and History keep meaning "things that happened through Decidarr". Auto-log's "historical plays are never mass-imported into the scoreboard" promise stands. (Schema verified: `action='seen'` + `source='auto'` are both legal today; no migration.) Board's headline line relabeled "Titles seen" (was "Total watched") so the seen-derived count stays honest post-backfill. |
 | Scope | **Active pools, both streams.** Every item in the active Movies pool and active TV pool is checked; non-pool viewing is ignored (same philosophy as auto-log). Bounded work regardless of library size. |
 | Trigger | **Admin-gated Settings button**, "Import watched from Plex", placed with the media-server card. Explicit, visible, re-runnable after loading a new pool. |
 | Matching | **Exact-only**: TMDB id first (`tmdb://` guid), then normalized title + year — the same matchable-maps approach as `autolog._matchable`. No fuzzy matching: a wrong guess would silently remove an unwatched film from the wheel. |

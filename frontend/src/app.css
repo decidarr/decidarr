@@ -445,10 +445,6 @@ button {
   border: 1px solid var(--line);
 }
 
-.poster-box--placeholder {
-  width: min(60vw, 260px);
-}
-
 .poster-box--spinning {
   transition: opacity var(--t-move) ease-in-out;
 }

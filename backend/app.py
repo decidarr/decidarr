@@ -573,6 +573,10 @@ async def backfill_seen(body: BackfillSeenIn):
     async with backend.make_client() as client:
         plays = await watched_fn(client)
 
+    if plays is None:
+        return {"ok": False, "message": "Media server unreachable.",
+                "marked_movies": 0, "marked_tv": 0, "skipped_seen": 0}
+
     marked = {"movie": 0, "tv": 0}
     skipped = 0
     with closing(db.get_conn()) as conn:
@@ -582,6 +586,8 @@ async def backfill_seen(body: BackfillSeenIn):
         # exact-only matchable maps over BOTH streams' active pools — the
         # same shape autolog._matchable builds. No fuzzy matching: a wrong
         # guess would silently remove an unwatched title from the wheel.
+        # (Deliberate divergence: autolog also matches current_picks; the
+        # backfill is spec-scoped to pool items only.)
         by_tmdb, by_title = {}, {}
         for r in conn.execute(
                 "SELECT i.media_type, i.tmdb_id, i.title, i.year FROM items i"

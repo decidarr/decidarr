@@ -26,6 +26,11 @@ select {
   color: inherit;
 }
 
+/* Checkboxes ship bright platform-blue by default, which fights the room. */
+input[type="checkbox"] {
+  accent-color: var(--gold);
+}
+
 button {
   cursor: pointer;
 }
@@ -632,7 +637,12 @@ button {
   position: absolute;
   left: 0;
   right: 0;
+  /* Absolutely-positioned children ignore the parent's align-items, so the
+     overlaid inputs must centre themselves on the row. */
+  top: 50%;
+  transform: translateY(-50%);
   width: 100%;
+  height: 20px; /* == thumb size, so the control's box wraps its thumb */
   -webkit-appearance: none;
   appearance: none;
   background: transparent;
@@ -648,6 +658,10 @@ button {
   border-radius: 50%;
   background: var(--gold);
   cursor: pointer;
+  box-shadow: var(--elev-1);
+  /* WebKit aligns a custom thumb to the TOP of the runnable track rather
+     than centring it — without this the dots sit off the line. */
+  margin-top: calc((4px - 20px) / 2);
 }
 
 .range-dual__input::-moz-range-thumb {
@@ -661,6 +675,14 @@ button {
 }
 
 .range-dual__input::-webkit-slider-runnable-track {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+}
+
+/* Firefox centres its thumb automatically, but its track needs styling too
+   or the rail falls back to the platform default. */
+.range-dual__input::-moz-range-track {
   height: 4px;
   background: var(--line);
   border-radius: 2px;
@@ -819,6 +841,39 @@ button {
    never distracting. Stopped entirely for reduced-motion. */
 .idle-hero__mark {
   filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.5));
+}
+
+/* --- blind mode: the reel stands in for the poster ---------------------- */
+
+.poster-box--blind {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The lucky green pocket sits 60deg clockwise of top, so three full turns
+   plus 300deg brings it to rest directly under the pointer. Shares the
+   spin theater's timing so blind and sighted picks land on the same beat. */
+.blind-reel .reel-mark__wheel {
+  transform-origin: 256px 266px;
+  transform-box: view-box;
+  animation: reel-land var(--t-spin) cubic-bezier(0.15, 0.85, 0.25, 1) forwards;
+}
+
+@keyframes reel-land {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(1380deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blind-reel .reel-mark__wheel {
+    animation: none;
+    transform: rotate(300deg); /* land it without the journey */
+  }
 }
 
 /* The wheel turns about its own hub; the pointer stays fixed above it. */

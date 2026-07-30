@@ -10,6 +10,7 @@ import { formatMetaLine, maskTitle, posterUrl, verdictToAction } from "../logic"
 import { S } from "../strings";
 import { toast } from "./Toast";
 import { Progress } from "./Progress";
+import { ReelMark } from "./ReelMark";
 import { useSession } from "../store";
 import type { PoolItem } from "../types";
 
@@ -160,7 +161,9 @@ export function PickCard({ item, onVetoed, onCommitted, onSeenIt }: PickCardProp
 
   return (
     <div className="pick-card">
-      <PosterBox item={item} />
+      {/* The poster is the biggest identity leak there is — one glance at
+          the art and the blind is off. Masked picks get the reel instead. */}
+      {masked ? <BlindReel /> : <PosterBox item={item} />}
 
       <h3 className={"pick-card__title" + (masked ? " pick-card__title--masked" : "")}>
         {displayTitle}
@@ -225,6 +228,17 @@ export function PickCard({ item, onVetoed, onCommitted, onSeenIt }: PickCardProp
           onCancel={() => setConfirmReplace(false)}
         />
       )}
+    </div>
+  );
+}
+
+/** Blind mode's stand-in for the poster: the reel spins and settles with its
+ * lucky green pocket beneath the pointer — the wheel has chosen, it just
+ * isn't telling you what yet. */
+function BlindReel() {
+  return (
+    <div className="poster-box poster-box--blind">
+      <ReelMark size={150} className="blind-reel" />
     </div>
   );
 }

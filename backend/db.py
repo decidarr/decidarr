@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS pools(
   id      INTEGER PRIMARY KEY,
   name    TEXT NOT NULL,
   media_type TEXT NOT NULL CHECK(media_type IN ('movie','tv')),
-  source  TEXT NOT NULL CHECK(source IN ('custom','tmdb','trakt')),
+  source  TEXT NOT NULL CHECK(source IN ('custom','tmdb','trakt','plex')),
   config  TEXT NOT NULL,
   active  INTEGER NOT NULL DEFAULT 0,
   refreshed_at TEXT
@@ -75,8 +75,51 @@ def get_conn(path: str | None = None) -> sqlite3.Connection:
     return conn
 
 
+def _migrate_pools_source(conn) -> None:
+    """v1.4: widen pools.source's CHECK to admit 'plex'. SQLite can't alter
+    a CHECK in place, so rebuild the table — guarded (no-op once the
+    constraint already names 'plex' and on fresh installs), transactional,
+    and row-count-asserted so a failure can never leave a half-migrated
+    database. Ids are copied verbatim, so items.pool_id links survive."""
+    sql = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='pools'"
+    ).fetchone()
+    if sql is None or "'plex'" in sql["sql"]:
+        return
+    before = conn.execute("SELECT COUNT(*) FROM pools").fetchone()[0]
+    conn.execute("PRAGMA foreign_keys=OFF")
+    try:
+        conn.executescript("""
+        BEGIN;
+        CREATE TABLE pools_new(
+          id      INTEGER PRIMARY KEY,
+          name    TEXT NOT NULL,
+          media_type TEXT NOT NULL CHECK(media_type IN ('movie','tv')),
+          source  TEXT NOT NULL CHECK(source IN ('custom','tmdb','trakt','plex')),
+          config  TEXT NOT NULL,
+          active  INTEGER NOT NULL DEFAULT 0,
+          refreshed_at TEXT
+        );
+        INSERT INTO pools_new
+          SELECT id, name, media_type, source, config, active, refreshed_at
+          FROM pools;
+        DROP TABLE pools;
+        ALTER TABLE pools_new RENAME TO pools;
+        COMMIT;
+        """)
+        after = conn.execute("SELECT COUNT(*) FROM pools").fetchone()[0]
+        if after != before:
+            raise RuntimeError(
+                f"pools migration lost rows ({before} -> {after})")
+    finally:
+        conn.execute("PRAGMA foreign_keys=ON")
+
+
 def init_db(path: str | None = None) -> None:
     with closing(get_conn(path)) as conn:
+        # Migration first: on an old DB the rebuild happens before the
+        # IF NOT EXISTS statements no-op; on a fresh DB the guard returns.
+        _migrate_pools_source(conn)
         conn.executescript(SCHEMA)
         conn.commit()
 

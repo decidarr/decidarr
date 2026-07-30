@@ -78,3 +78,57 @@ def test_failing_section_is_skipped_not_fatal():
     out = asyncio.run(plex_pool.fetch(
         _client(routes), {"sections": ["1", "3"]}, "movie"))
     assert [r["title"] for r in out] == ["Lady Bird"]
+
+
+def _plex_env(monkeypatch, routes):
+    from media import plex as media_plex
+    monkeypatch.setenv("PLEX_URL", "http://plex:32400")
+    monkeypatch.setenv("PLEX_TOKEN", "tok")
+    monkeypatch.setattr(media_plex, "make_client", lambda: _client(routes))
+
+
+def test_sections_route_lists_movie_and_show_sections(client, monkeypatch):
+    _plex_env(monkeypatch, {"/library/sections": {"MediaContainer": {"Directory": [
+        {"key": "1", "type": "movie", "title": "Films"},
+        {"key": "2", "type": "show", "title": "TV"},
+        {"key": "9", "type": "artist", "title": "Music"},
+    ]}}})
+    body = client.get("/api/plex/sections").json()
+    assert body["ok"] is True
+    assert body["sections"] == [
+        {"key": "1", "title": "Films", "type": "movie"},
+        {"key": "2", "title": "TV", "type": "show"},
+    ]
+
+
+def test_sections_route_degrades_when_unconfigured(client):
+    r = client.get("/api/plex/sections")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is False and body["sections"] == []
+
+
+def test_sections_route_degrades_when_unreachable(client, monkeypatch):
+    _plex_env(monkeypatch,
+              {"/library/sections": httpx.ConnectError("down")})
+    body = client.get("/api/plex/sections").json()
+    assert body["ok"] is False and body["sections"] == []
+
+
+def test_create_plex_pool_validated(client, monkeypatch):
+    # unconfigured -> 422
+    r = client.post("/api/pools", json={
+        "name": "Lib", "media_type": "movie", "source": "plex",
+        "config": {"sections": ["1"]}})
+    assert r.status_code == 422
+    # configured but no sections chosen -> 422
+    _plex_env(monkeypatch, {})
+    r = client.post("/api/pools", json={
+        "name": "Lib", "media_type": "movie", "source": "plex",
+        "config": {"sections": []}})
+    assert r.status_code == 422
+    # configured with sections -> created
+    r = client.post("/api/pools", json={
+        "name": "Lib", "media_type": "movie", "source": "plex",
+        "config": {"sections": ["1"]}})
+    assert r.status_code == 201 and "id" in r.json()

@@ -2,6 +2,8 @@ import asyncio
 import json
 import os
 import sqlite3
+
+import httpx
 from contextlib import asynccontextmanager, closing
 
 from fastapi import (APIRouter, Depends, FastAPI, File, Form, Header,
@@ -417,10 +419,16 @@ def list_pools():
 @api.post("/api/pools", status_code=201, dependencies=[Depends(require_admin)])
 def create_pool(body: PoolIn):
     if body.media_type not in ("movie", "tv") or \
-            body.source not in ("custom", "tmdb", "trakt"):
+            body.source not in ("custom", "tmdb", "trakt", "plex"):
         raise HTTPException(422, "bad_pool")
     if body.source == "trakt" and not config.resolve("trakt_client_id"):
         raise HTTPException(422, "trakt_unconfigured")
+    if body.source == "plex":
+        from media import plex as media_plex
+        if not media_plex.configured():
+            raise HTTPException(422, "plex_unconfigured")
+        if not body.config.get("sections"):
+            raise HTTPException(422, "plex_sections_required")
     with closing(db.get_conn()) as conn:
         cur = conn.execute(
             "INSERT INTO pools(name, media_type, source, config) VALUES (?,?,?,?)",
@@ -620,6 +628,29 @@ async def backfill_seen(body: BackfillSeenIn):
         conn.commit()
     return {"ok": True, "marked_movies": marked["movie"],
             "marked_tv": marked["tv"], "skipped_seen": skipped}
+
+
+@api.get("/api/plex/sections")
+async def plex_sections():
+    """Movie/show library sections for the Plex-pool checkboxes. A read —
+    ungated (invariant #12 gates settings writes only) — and never a 5xx
+    for config/connectivity (invariant #1)."""
+    from media import plex as media_plex
+    if not media_plex.configured():
+        return {"ok": False, "message": "No media server configured.",
+                "sections": []}
+    try:
+        async with media_plex.make_client() as client:
+            r = await client.get("/library/sections")
+            r.raise_for_status()
+            dirs = (r.json().get("MediaContainer") or {}).get("Directory") or []
+    except (httpx.HTTPError, ValueError):
+        return {"ok": False, "message": "Media server unreachable.",
+                "sections": []}
+    return {"ok": True, "sections": [
+        {"key": str(d.get("key")), "title": d.get("title") or "",
+         "type": d.get("type")}
+        for d in dirs if d.get("type") in ("movie", "show")]}
 
 
 TEST_PROBES = {

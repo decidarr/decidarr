@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Disc3, Swords } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { eligibleItems, pickWinner, posterUrl, spinDurations } from "../logic";
+import { activeFilterCount, eligibleItems, heroCountLine, heroReadyLine, pickWinner, posterUrl, spinDurations } from "../logic";
 import { postEvent } from "../api";
 import { PickCard } from "./PickCard";
 import { toast } from "./Toast";
@@ -29,6 +29,11 @@ interface StageProps {
   /** True when the current stream has an active pool configured (so an empty
    * `pool` during load means "still fetching", not "genuinely empty"). */
   hasActivePool: boolean;
+  /** Active pool's display name for the hero kicker (null: no active pool). */
+  poolName: string | null;
+  /** True when tonight's pick exists for the current stream — the hero
+   * defers to the TonightCard with a slim ready-line. */
+  hasPick: boolean;
   onOpenSettings: () => void;
   onLaunchDuel?: () => void;
 }
@@ -44,6 +49,8 @@ export function Stage({
   seen,
   poolLoading,
   hasActivePool,
+  poolName,
+  hasPick,
   onOpenSettings,
   onLaunchDuel,
 }: StageProps) {
@@ -196,7 +203,19 @@ export function Stage({
 
         {phase.kind === "loading" && <LoadingPoster />}
 
-        {phase.kind === "idle" && <IdlePoster />}
+        {phase.kind === "idle" && (
+          poolLoading && hasActivePool ? (
+            <LoadingPoster />
+          ) : (
+            <IdleHero
+              pool={pool}
+              seen={seen}
+              poolName={poolName}
+              hasActivePool={hasActivePool}
+              hasPick={hasPick}
+            />
+          )
+        )}
 
         {phase.kind === "spinning" && (
           <PosterBox item={displayItem} spinning />
@@ -252,8 +271,42 @@ export function Stage({
   );
 }
 
-function IdlePoster() {
-  return <div className="poster-box poster-box--placeholder" aria-hidden="true" />;
+/** The landing hero: what greets a player before anything is spun. Full
+ * welcome (kicker + invitation + live count) when nothing is picked;
+ * a slim ready-line under a committed TonightCard; the pool-missing nudge
+ * when no pool is active. The count comes from the same eligibleItems()
+ * call spin() uses, so the number and the wheel can never disagree. */
+function IdleHero({ pool, seen, poolName, hasActivePool, hasPick }: {
+  pool: PoolItem[];
+  seen: string[];
+  poolName: string | null;
+  hasActivePool: boolean;
+  hasPick: boolean;
+}) {
+  const { stream, filters } = useSession();
+  const n = eligibleItems(pool, filters, seen).length;
+  const filtersActive = activeFilterCount(filters) > 0;
+
+  if (hasPick) {
+    return (
+      <div className="idle-hero idle-hero--slim">
+        <p className="idle-hero__count">{heroReadyLine(n)}</p>
+      </div>
+    );
+  }
+  return (
+    <div className="idle-hero">
+      <span className="idle-hero__kicker">
+        {poolName ? `${poolName} · ${S.hero.kicker}` : S.hero.kicker}
+      </span>
+      <p className="idle-hero__invite">{S.hero.invite}</p>
+      <p className="idle-hero__count">
+        {hasActivePool
+          ? heroCountLine(n, stream, filtersActive)
+          : S.emptyWheel.noPool}
+      </p>
+    </div>
+  );
 }
 
 function LoadingPoster() {

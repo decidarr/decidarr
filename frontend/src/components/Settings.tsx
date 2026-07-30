@@ -630,8 +630,10 @@ function BackfillRow() {
       setResult(r.ok
         ? S.settings.backfill.result(r.marked_movies, r.marked_tv, r.skipped_seen)
         : r.message ?? S.settings.backfill.failed);
-      // seen changed -> the wheel's eligible count and state must refresh
-      queryClient.invalidateQueries({ queryKey: ["state"] });
+      if (r.ok) {
+        // seen changed -> the wheel's eligible count and state must refresh
+        queryClient.invalidateQueries({ queryKey: ["state"] });
+      }
     } catch {
       setResult(S.settings.backfill.failed);
     } finally {

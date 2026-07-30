@@ -34,23 +34,27 @@ export function ReelMark({
       className={className}
       aria-hidden="true"
     >
-      <circle
-        cx="256"
-        cy="266"
-        r="186"
-        fill={outline ? "none" : "var(--panel)"}
-        stroke={outline ? "var(--cream)" : "var(--gold)"}
-        strokeWidth="16"
-      />
-      <g fill={outline ? "var(--cream)" : "var(--ink)"}>
-        {HOLES.map((h) => (
-          <circle key={`${h.cx}-${h.cy}`} cx={h.cx} cy={h.cy} r="44" />
-        ))}
+      {/* Only the wheel turns — the pointer above it stays put, the way a
+          roulette pointer does. Callers animate `.reel-mark__wheel`. */}
+      <g className="reel-mark__wheel">
+        <circle
+          cx="256"
+          cy="266"
+          r="186"
+          fill={outline ? "none" : "var(--panel)"}
+          stroke={outline ? "var(--cream)" : "var(--gold)"}
+          strokeWidth="16"
+        />
+        <g fill={outline ? "var(--cream)" : "var(--ink)"}>
+          {HOLES.map((h) => (
+            <circle key={`${h.cx}-${h.cy}`} cx={h.cx} cy={h.cy} r="44" />
+          ))}
+        </g>
+        {/* the lucky pocket — the wheel has already picked one */}
+        {!outline && <circle cx="355" cy="209" r="30" fill="var(--green)" />}
+        <circle cx="256" cy="266" r="40" fill={outline ? "var(--cream)" : "var(--gold)"} />
+        {!outline && <circle cx="256" cy="266" r="14" fill="var(--ink)" />}
       </g>
-      {/* the lucky pocket — the wheel has already picked one */}
-      {!outline && <circle cx="355" cy="209" r="30" fill="var(--green)" />}
-      <circle cx="256" cy="266" r="40" fill={outline ? "var(--cream)" : "var(--gold)"} />
-      {!outline && <circle cx="256" cy="266" r="14" fill="var(--ink)" />}
       <path d={POINTER} fill={outline ? "var(--cream)" : "var(--gold)"} />
     </svg>
   );

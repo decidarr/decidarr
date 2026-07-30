@@ -391,6 +391,16 @@ button {
   align-items: start;
 }
 
+/* The spin bar is pinned to the thumb arc on a phone; in the theater it
+   belongs to the stage column, sitting inline under the stage — otherwise
+   it floats across the rail. */
+.theater .spin-bar {
+  position: static;
+  width: 100%;
+  max-width: 520px;
+  margin: 0;
+}
+
 .theater__stage .stage {
   padding: var(--s5) var(--s4);
   background: color-mix(in srgb, var(--panel) 40%, transparent);
@@ -809,6 +819,12 @@ button {
    never distracting. Stopped entirely for reduced-motion. */
 .idle-hero__mark {
   filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.5));
+}
+
+/* The wheel turns about its own hub; the pointer stays fixed above it. */
+.idle-hero__mark .reel-mark__wheel {
+  transform-origin: 256px 266px;
+  transform-box: view-box;
   animation: reel-drift 60s linear infinite;
 }
 
@@ -819,7 +835,7 @@ button {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .idle-hero__mark {
+  .idle-hero__mark .reel-mark__wheel {
     animation: none;
   }
 }

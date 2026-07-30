@@ -59,6 +59,22 @@ export const S = {
     duel: "Duel",
   },
 
+  // --- idle hero (v1.2.3 landing) ---------------------------------------
+  hero: {
+    kicker: "Tonight, we watch",
+    invite:
+      "Hit the button and let the wheel decide. It draws from whatever your filters allow and skips everything you've already seen.",
+    counting: (n: number, noun: string) => `Choosing from ${n} unseen ${noun}.`,
+    countingFiltered: (n: number, noun: string) =>
+      `Choosing from ${n} unseen ${noun} that fit your filters.`,
+    ready: (n: number) => `Another ${n} in the wheel.`,
+    readyOne: "One more in the wheel.",
+    nouns: { movie: ["film", "films"], tv: ["show", "shows"] } as Record<
+      "movie" | "tv",
+      [string, string]
+    >,
+  },
+
   // --- empty / unconfigured states --------------------------------------
   emptyWheel: {
     title: "Empty wheel",

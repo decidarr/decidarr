@@ -253,3 +253,21 @@ export function formatWhen(ts: string): string {
     month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
   });
 }
+
+/** Live idle-hero count line: "Choosing from 214 unseen films." with the
+ * filter clause appended only when filters are actually active — the number
+ * comes from the same eligibleItems() call Spin draws from, so it can never
+ * disagree with what Spin does. */
+export function heroCountLine(
+  n: number, stream: Stream, filtersActive: boolean,
+): string {
+  const [one, many] = S.hero.nouns[stream];
+  const noun = n === 1 ? one : many;
+  return filtersActive ? S.hero.countingFiltered(n, noun)
+                       : S.hero.counting(n, noun);
+}
+
+/** Slim variant shown under a committed tonight pick. */
+export function heroReadyLine(n: number): string {
+  return n === 1 ? S.hero.readyOne : S.hero.ready(n);
+}

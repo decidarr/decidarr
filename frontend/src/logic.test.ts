@@ -10,6 +10,8 @@ import {
   eligibleItems,
   formatMetaLine,
   formatWhen,
+  heroCountLine,
+  heroReadyLine,
   maskTitle,
   pickWinner,
   posterUrl,
@@ -299,5 +301,33 @@ describe("formatWhen", () => {
   });
   it("falls back to the raw string for unparseable input", () => {
     expect(formatWhen("not-a-date")).toBe("not-a-date");
+  });
+});
+
+describe("heroCountLine", () => {
+  it("pluralizes films by stream", () => {
+    expect(heroCountLine(214, "movie", false))
+      .toBe("Choosing from 214 unseen films.");
+    expect(heroCountLine(1, "movie", false))
+      .toBe("Choosing from 1 unseen film.");
+  });
+  it("uses shows for tv", () => {
+    expect(heroCountLine(7, "tv", false))
+      .toBe("Choosing from 7 unseen shows.");
+  });
+  it("appends the filter clause only when filters are active", () => {
+    expect(heroCountLine(3, "movie", true))
+      .toBe("Choosing from 3 unseen films that fit your filters.");
+  });
+  it("renders zero honestly", () => {
+    expect(heroCountLine(0, "movie", true))
+      .toBe("Choosing from 0 unseen films that fit your filters.");
+  });
+});
+
+describe("heroReadyLine", () => {
+  it("counts the rest of the wheel", () => {
+    expect(heroReadyLine(213)).toBe("Another 213 in the wheel.");
+    expect(heroReadyLine(1)).toBe("One more in the wheel.");
   });
 });

@@ -188,6 +188,12 @@ describe("formatMetaLine", () => {
       .toBe("1999 · 136m · 1 season · ★8.2 · #1");
     expect(formatMetaLine(show, "movie")).not.toContain("season");
   });
+  it("masked shows runtime only — year, rating and rank are giveaways", () => {
+    expect(formatMetaLine(item({}), "movie", true)).toBe("136m");
+    expect(formatMetaLine(item({ runtime: null }), "movie", true)).toBe("");
+    // unmasked stays byte-identical
+    expect(formatMetaLine(item({}), "movie", false)).toBe("1999 · 136m · ★8.2 · #1");
+  });
 });
 
 describe("progressDisplay", () => {

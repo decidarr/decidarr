@@ -99,7 +99,12 @@ export function activeFilterCount(f: Filters): number {
 /** Meta line under a pick's title: year / runtime / (TV: seasons) /
  * rating / rank. Any missing field is simply omitted, never shown as a
  * placeholder — Swamp Roulette's card never rendered "null". */
-export function formatMetaLine(item: PoolItem, stream: Stream): string {
+export function formatMetaLine(
+  item: PoolItem, stream: Stream, masked = false,
+): string {
+  // Blind mode: runtime answers "have we got time?" without giving the
+  // film away — everything else on this line identifies it.
+  if (masked) return item.runtime != null ? `${item.runtime}m` : "";
   const parts: string[] = [];
   if (item.year != null) parts.push(String(item.year));
   if (item.runtime != null) parts.push(`${item.runtime}m`);

@@ -168,7 +168,7 @@ export function PickCard({ item, onVetoed, onCommitted, onSeenIt }: PickCardProp
       <h3 className={"pick-card__title" + (masked ? " pick-card__title--masked" : "")}>
         {displayTitle}
       </h3>
-      <p className="pick-card__meta">{formatMetaLine(item, stream)}</p>
+      <p className="pick-card__meta">{formatMetaLine(item, stream, masked)}</p>
 
       {available && (
         <span className="availability-chip availability-chip--available">

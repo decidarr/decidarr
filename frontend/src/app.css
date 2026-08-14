@@ -519,8 +519,10 @@ button {
   color: var(--gold);
 }
 
-/* Tonight on stage (v1.5): the pick is the show; the wheel is the footer. */
-.tonight-card--stage {
+/* Tonight on stage (v1.5): the pick is the show; the wheel is the footer.
+   Compound selector: must outrank the base .tonight-card card treatment,
+   which is defined later in this file. */
+.tonight-card.tonight-card--stage {
   margin: 0;
   background: transparent;
   border: none;

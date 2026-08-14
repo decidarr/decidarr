@@ -11,6 +11,7 @@ import {
   duelCandidates,
   eligibleItems,
   fanPosters,
+  shuffleReel,
   formatMetaLine,
   formatWhen,
   heroCountLine,
@@ -407,5 +408,31 @@ describe("applyPresetRange", () => {
       .toEqual({ runtimeMin: 35, runtimeMax: 90 });
     expect(applyPresetRange("whatever", "movie"))
       .toEqual({ runtimeMin: 0, runtimeMax: Infinity });
+  });
+});
+
+describe("shuffleReel", () => {
+  const withPoster = (id: number) =>
+    item({ id, item_key: `tmdb:${id}`, poster: `/p${id}.jpg` });
+
+  it("samples up to n distinct items from the deck", () => {
+    const deck = Array.from({ length: 30 }, (_, i) => withPoster(i + 1));
+    const reel = shuffleReel(deck, 14, () => 0);
+    expect(reel).toHaveLength(14);
+    expect(new Set(reel.map((i) => i.item_key)).size).toBe(14);
+    for (const it of reel) expect(deck).toContain(it);
+  });
+
+  it("returns the whole deck when smaller than n, and [] for []", () => {
+    const deck = [withPoster(1), withPoster(2)];
+    expect(shuffleReel(deck, 14, () => 0)).toHaveLength(2);
+    expect(shuffleReel([], 14, () => 0)).toEqual([]);
+  });
+
+  it("is deterministic with an injected rand", () => {
+    const deck = Array.from({ length: 10 }, (_, i) => withPoster(i + 1));
+    const a = shuffleReel(deck, 5, () => 0.5);
+    const b = shuffleReel(deck, 5, () => 0.5);
+    expect(a.map((i) => i.item_key)).toEqual(b.map((i) => i.item_key));
   });
 });

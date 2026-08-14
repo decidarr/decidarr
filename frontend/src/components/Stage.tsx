@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Disc3, SlidersHorizontal, Swords } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { activeFilterCount, applyPresetRange, activePreset, eligibleItems, fanPosters, heroCountLine, heroReadyLine, pickWinner, posterUrl, spinDurations } from "../logic";
+import { activeFilterCount, applyPresetRange, activePreset, eligibleItems, fanPosters, heroCountLine, heroReadyLine, pickWinner, posterUrl, shuffleReel, spinDurations } from "../logic";
 import type { PresetKey } from "../logic";
 import { usePoolSwitcher } from "../usePoolSwitcher";
 import { TonightCard } from "./TonightCard";
@@ -155,18 +155,23 @@ export function Stage({
     const settlePortion = Math.min(500, total * 0.2);
     const cyclePortion = total - settlePortion;
     const deck = candidates.length ? candidates : [winner];
-    const overshootPool = deck.filter((i) => i.item_key !== winner.item_key);
+    // A bounded reel instead of random draws from the whole deck: fourteen
+    // posters can be preloaded before the first frame, three hundred can't —
+    // fetching+decoding a cold w500 every 40-70ms was the stutter.
+    const reel = shuffleReel(deck);
+    const overshootPool = reel.filter((i) => i.item_key !== winner.item_key);
     const overshoot = overshootPool.length
       ? overshootPool[Math.floor(Math.random() * overshootPool.length)]
       : winner;
 
     let elapsed = 0;
     let delay = 70; // starts fast, decreasing interval as the shuffle ramps
+    let step = 0;
     let cancelled = false;
 
     const tick = () => {
       if (cancelled) return;
-      setDisplayItem(deck[Math.floor(Math.random() * deck.length)]);
+      setDisplayItem(reel[step++ % reel.length]);
       navigator.vibrate?.(10);
       elapsed += delay;
       delay = Math.max(40, delay - 6);
@@ -181,7 +186,25 @@ export function Stage({
         }, settlePortion / 2);
       }
     };
-    tick();
+
+    // Warm every reel poster (plus the landing pair) and hold the curtain
+    // for at most 300ms while they decode — cached art starts instantly.
+    const urls = [...new Set(
+      [...reel, overshoot, winner]
+        .map((i) => posterUrl(i.poster))
+        .filter((u): u is string => u !== null),
+    )];
+    const warmups = urls.map((u) => {
+      const img = new Image();
+      img.src = u;
+      return img.decode ? img.decode().catch(() => {}) : Promise.resolve();
+    });
+    Promise.race([
+      Promise.allSettled(warmups),
+      new Promise((r) => { shuffleTimer.current = window.setTimeout(r, 300); }),
+    ]).then(() => {
+      if (!cancelled) tick();
+    });
 
     return () => {
       cancelled = true;

@@ -307,6 +307,22 @@ export function applyPresetRange(
   return { runtimeMin: lo, runtimeMax: hi };
 }
 
+/** The spin's poster reel: a small distinct sample of the deck the shuffle
+ * cycles through (wrapping), instead of random draws from the whole pool.
+ * Bounding the set is what makes preloading possible — a few hundred
+ * candidates can't all be fetched mid-animation, fourteen can. Injectable
+ * rand (Fisher–Yates) keeps tests deterministic. */
+export function shuffleReel(
+  deck: PoolItem[], n = 14, rand: () => number = Math.random,
+): PoolItem[] {
+  const pool = [...deck];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, n);
+}
+
 /** A decorative handful of posters from what the wheel could actually land
  * on — desktop's idle-stage set dressing. Distinct, art-only, sampled with
  * an injectable rand (Fisher–Yates) so tests are deterministic. Under two

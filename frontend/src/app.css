@@ -410,12 +410,18 @@ button {
   margin: 0;
 }
 
-.theater__stage .stage {
-  padding: var(--s5) var(--s4);
+/* The whole left pane is one surface — the pick (when staged) and the
+   wheel share it, so the respin footer reads as part of the same panel. */
+.theater__stage {
   background: color-mix(in srgb, var(--panel) 40%, transparent);
   border: 1px solid var(--line);
   border-radius: var(--r-card);
   box-shadow: var(--elev-card), var(--edge-hi-soft);
+  padding: var(--s4);
+}
+
+.theater__stage .stage {
+  padding: var(--s3) 0;
 }
 
 .theater__rail {
@@ -513,10 +519,39 @@ button {
   color: var(--gold);
 }
 
-/* The tonight card sizes itself for the mobile column; in the rail it fills
-   the track like every other card. */
-.theater__rail .tonight-card {
+/* Tonight on stage (v1.5): the pick is the show; the wheel is the footer. */
+.tonight-card--stage {
   margin: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: var(--s2) var(--s2) 0;
+}
+
+.tonight-card--stage .tonight-card__title {
+  font-size: 1.6rem;
+}
+
+.tonight-card__poster {
+  width: min(30%, 180px);
+  aspect-ratio: 2 / 3;
+}
+
+.tonight-card--stage .tonight-card__watch,
+.tonight-card--stage .tonight-card__markwatched {
+  max-width: 380px;
+}
+
+/* respin footer: the stage's wheel compresses beneath a staged pick */
+.theater__stage .tonight-card--stage + .stage {
+  border-top: 1px solid var(--line);
+  margin-top: var(--s4);
+  padding-top: var(--s4);
+}
+
+.theater__stage .tonight-card--stage + .stage .idle-hero--slim {
+  min-height: 48px;
+  padding: var(--s2);
 }
 
 /* Non-spin views get a comfortable reading column rather than full width. */

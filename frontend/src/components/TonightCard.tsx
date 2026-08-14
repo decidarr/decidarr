@@ -11,13 +11,21 @@ import { useSession } from "../store";
 import { toast } from "./Toast";
 import { Progress } from "./Progress";
 import { ConfirmSheet } from "./PickCard";
-import type { CurrentPick } from "../types";
+import { posterUrl } from "../logic";
+import type { CurrentPick, PoolItem } from "../types";
 
 export interface TonightCardProps {
   pick: CurrentPick;
+  /** "stage": the desktop theater's big treatment (poster, serif title,
+   * runtime meta). "card": the mobile pinned card, byte-identical to v1.4. */
+  variant?: "card" | "stage";
+  /** The pick's row in the CURRENT pool, when it still exists there —
+   * source of poster art + runtime. Null: the pool changed since the pick;
+   * the stage renders its fallback surface and the actions still work. */
+  poolItem?: PoolItem | null;
 }
 
-export function TonightCard({ pick }: TonightCardProps) {
+export function TonightCard({ pick, variant = "card", poolItem = null }: TonightCardProps) {
   const { playerId } = useSession();
   const queryClient = useQueryClient();
   const [confirmClear, setConfirmClear] = useState(false);
@@ -60,7 +68,7 @@ export function TonightCard({ pick }: TonightCardProps) {
   }
 
   return (
-    <div className="tonight-card">
+    <div className={"tonight-card" + (variant === "stage" ? " tonight-card--stage" : "")}>
       <div className="tonight-card__header">
         <span className="tonight-card__label">{S.tonight.title}</span>
         <button
@@ -73,8 +81,23 @@ export function TonightCard({ pick }: TonightCardProps) {
         </button>
       </div>
 
+      {variant === "stage" && (
+        <div className="poster-box tonight-card__poster">
+          {posterUrl(poolItem?.poster) ? (
+            <img className="poster-box__img" src={posterUrl(poolItem?.poster)!} alt="" />
+          ) : (
+            <div className="poster-box__fallback" />
+          )}
+          <div className="poster-box__scrim" />
+        </div>
+      )}
+
       <h3 className="tonight-card__title">{pick.title}</h3>
-      <p className="tonight-card__meta">{pick.year ?? ""}</p>
+      <p className="tonight-card__meta">
+        {[pick.year, variant === "stage" && poolItem?.runtime != null
+            ? `${poolItem.runtime}m` : null]
+          .filter((x) => x != null && x !== "").join(" · ")}
+      </p>
 
       {available && (
         <span className="availability-chip availability-chip--available">

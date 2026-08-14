@@ -114,6 +114,14 @@ function AppShell() {
         {view === "spin" && (isDesktop ? (
           <div className="theater">
             <div className="theater__stage">
+              {currentPick && (
+                <TonightCard
+                  key={currentPick.item_key}
+                  pick={currentPick}
+                  variant="stage"
+                  poolItem={pool.find((i) => i.item_key === currentPick.item_key) ?? null}
+                />
+              )}
               <Stage
                 pool={pool}
                 seen={seen}
@@ -128,7 +136,6 @@ function AppShell() {
             <div className="theater__rail">
               <ReelMark variant="outline" size={380} className="theater__watermark" />
               <Console pool={pool} />
-              {currentPick && <TonightCard key={currentPick.item_key} pick={currentPick} />}
               <HistoryRail history={state.history} grudges={state.grudges} />
               <BoardStrip players={state.players} />
             </div>

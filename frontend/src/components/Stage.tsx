@@ -298,9 +298,6 @@ export function Stage({
 
       {phase.kind !== "empty" && (
         <ZenStrip
-          n={eligibleItems(pool, filters, seen)
-            .filter((i) => i.item_key !== (effectivePickKey ?? "")).length}
-          hasPick={effectivePickKey != null}
           filtersActive={activeFilterCount(filters)}
           spinning={phase.kind === "spinning"}
           onSpin={() => spin()}
@@ -316,10 +313,8 @@ export function Stage({
  * hidden outside `.zen`, and the classic spin bar hidden inside it): list,
  * length, the filters sheet, the live count, Spin and Duel. */
 function ZenStrip({
-  n, hasPick, filtersActive, spinning, onSpin, onDuel, onOpenFilters,
+  filtersActive, spinning, onSpin, onDuel, onOpenFilters,
 }: {
-  n: number;
-  hasPick: boolean;
   filtersActive: number;
   spinning: boolean;
   onSpin: () => void;
@@ -333,41 +328,42 @@ function ZenStrip({
   return (
     <div className="zen-strip">
       {streamPools.length >= 2 && (
+        <label className="zen-strip__field">
+          <span className="zen-strip__label">{S.pools.watchingFrom}</span>
+          <select
+            className="decade-select zen-strip__select"
+            value={activePool?.id ?? ""}
+            disabled={switching}
+            onChange={(e) => switchPool(Number(e.target.value))}
+          >
+            {streamPools.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </label>
+      )}
+      <label className="zen-strip__field">
+        <span className="zen-strip__label">{S.filters.runtime}</span>
         <select
           className="decade-select zen-strip__select"
-          value={activePool?.id ?? ""}
-          disabled={switching}
-          onChange={(e) => switchPool(Number(e.target.value))}
-          aria-label={S.pools.watchingFrom}
+          value={preset ?? "custom"}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "custom") return;
+            setFilters({ ...filters, ...applyPresetRange(v as PresetKey, stream) });
+          }}
         >
-          {streamPools.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
+          <option value="schoolNight">{S.filters.presets.schoolNight}</option>
+          <option value="committed">{S.filters.presets.committed}</option>
+          <option value="whatever">{S.filters.console.whatever}</option>
+          {preset === null && <option value="custom">{S.filters.console.custom}</option>}
         </select>
-      )}
-      <select
-        className="decade-select zen-strip__select"
-        value={preset ?? "custom"}
-        onChange={(e) => {
-          const v = e.target.value;
-          if (v === "custom") return;
-          setFilters({ ...filters, ...applyPresetRange(v as PresetKey, stream) });
-        }}
-        aria-label={S.filters.console.runtimeLabel}
-      >
-        <option value="schoolNight">{S.filters.presets.schoolNight}</option>
-        <option value="committed">{S.filters.presets.committed}</option>
-        <option value="whatever">{S.filters.console.whatever}</option>
-        {preset === null && <option value="custom">{S.filters.console.custom}</option>}
-      </select>
+      </label>
       <button type="button" className="btn-secondary zen-strip__filters" onClick={onOpenFilters}>
         <SlidersHorizontal size={14} aria-hidden="true" />
         {S.filters.title}
         {filtersActive > 0 ? S.filters.console.activeCount(filtersActive) : ""}
       </button>
-      <span className="zen-strip__count">
-        {hasPick ? heroReadyLine(n) : heroCountLine(n, stream, filtersActive > 0)}
-      </span>
       <button
         type="button"
         className="spin-button zen-strip__spin"

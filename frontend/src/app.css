@@ -462,10 +462,24 @@ button {
 
 .zen .zen-strip {
   display: flex;
-  align-items: center;
-  gap: var(--s2);
+  align-items: flex-end; /* labels stack above the selects */
+  gap: var(--s3);
   width: 100%;
   padding: var(--s3) var(--s2) 0;
+}
+
+.zen-strip__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+
+.zen-strip__label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--dim);
 }
 
 .zen .spin-bar {
@@ -473,8 +487,13 @@ button {
 }
 
 .zen-strip__select {
-  max-width: 130px;
+  max-width: 150px;
   font-size: 0.8rem;
+}
+
+/* Compound: must outrank the base .decade-select rule, defined later. */
+.zen-strip .zen-strip__select {
+  border-color: var(--gold);
 }
 
 .zen-strip__filters {
@@ -483,20 +502,12 @@ button {
   min-height: 44px;
 }
 
-.zen-strip__count {
-  flex: 1;
-  text-align: right;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+
 
 .zen-strip__spin {
   flex: 0 0 auto;
-  min-width: 120px;
+  min-width: 140px;
+  margin-left: auto; /* Spin and Duel keep the right edge */
 }
 
 .zen-strip__duel {

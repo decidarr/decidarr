@@ -118,9 +118,10 @@ export function formatMetaLine(
 
 // --- progress watcher: pure state -> display mapping -----------------------
 
-/** Poll cadence/limits shared by the Progress component and its tests. */
-export const PROGRESS_POLL_MS = 5000;
-export const PROGRESS_POLL_CAP = 180;
+/** Poll cadence/limits shared by the Progress component and its tests.
+ * The cap is sized so cadence × cap stays ~15 minutes of actual watching. */
+export const PROGRESS_POLL_MS = 2000;
+export const PROGRESS_POLL_CAP = 450;
 export const STUCK_SEARCHING_MS = 10 * 60 * 1000; // 10 minutes
 
 export type ProgressDisplay =

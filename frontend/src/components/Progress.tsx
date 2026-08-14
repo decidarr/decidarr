@@ -1,4 +1,4 @@
-// Progress watcher: polls /api/progress every 5s for a single in-flight
+// Progress watcher: polls /api/progress every 2s for a single in-flight
 // pick. Exactly one watcher exists per mounted <Progress/> — it's a plain
 // child of one card, so React's own unmount lifecycle tears the interval
 // down (no manual bookkeeping needed across cards, unlike Swamp Roulette).

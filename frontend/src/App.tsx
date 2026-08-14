@@ -15,8 +15,7 @@ import { Stage } from "./components/Stage";
 import { Toast } from "./components/Toast";
 import { TopBar } from "./components/TopBar";
 import { TonightCard } from "./components/TonightCard";
-import { Board, BoardStrip, History, HistoryRail } from "./components/Views";
-import { ReelMark } from "./components/ReelMark";
+import { Board, History } from "./components/Views";
 import { S } from "./strings";
 import { useSession } from "./store";
 import { useIsDesktop } from "./useIsDesktop";
@@ -29,6 +28,7 @@ function AppShell() {
   const { playerId, stream, setPlayer, setStream } = useSession();
   const [view, setView] = useState<View>("spin");
   const [identityOpen, setIdentityOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [duelOpen, setDuelOpen] = useState(false);
   const [onboardingSkipped, setOnboardingSkipped] = useState(false);
   const queryClient = useQueryClient();
@@ -112,34 +112,51 @@ function AppShell() {
 
       <main className="app__main">
         {view === "spin" && (isDesktop ? (
-          <div className="theater">
-            <div className="theater__stage">
-              {currentPick && (
-                <TonightCard
-                  key={currentPick.item_key}
-                  pick={currentPick}
-                  variant="stage"
-                  poolItem={pool.find((i) => i.item_key === currentPick.item_key) ?? null}
-                />
-              )}
+          <>
+            <div className="zen">
               <Stage
                 pool={pool}
                 seen={seen}
                 poolLoading={poolQuery.isLoading}
                 hasActivePool={hasActivePool}
                 poolName={state.pools[stream]?.name ?? null}
-                pickKey={currentPick?.item_key ?? null}
+                pick={currentPick ?? null}
+                pickPoolItem={currentPick
+                  ? pool.find((i) => i.item_key === currentPick.item_key) ?? null
+                  : null}
                 onOpenSettings={() => setView("settings")}
                 onLaunchDuel={() => setDuelOpen(true)}
+                onOpenFilters={() => setFiltersOpen(true)}
               />
             </div>
-            <div className="theater__rail">
-              <ReelMark variant="outline" size={380} className="theater__watermark" />
-              <Console pool={pool} />
-              <HistoryRail history={state.history} grudges={state.grudges} />
-              <BoardStrip players={state.players} />
-            </div>
-          </div>
+            {filtersOpen && (
+              <div
+                className="sheet-overlay"
+                role="presentation"
+                onClick={() => setFiltersOpen(false)}
+              >
+                <div
+                  className="sheet"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label={S.filters.title}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="sheet__header">
+                    <h2 className="sheet__title">{S.filters.title}</h2>
+                    <button
+                      type="button"
+                      className="sheet__close"
+                      onClick={() => setFiltersOpen(false)}
+                    >
+                      {S.common.close}
+                    </button>
+                  </div>
+                  <Console pool={pool} inSheet />
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <>
             <Stage

@@ -3,17 +3,20 @@
 // the poster-shuffle is theater; assistive tech gets the result immediately
 // via an aria-live region.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Disc3, Swords } from "lucide-react";
+import { Disc3, SlidersHorizontal, Swords } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { activeFilterCount, eligibleItems, fanPosters, heroCountLine, heroReadyLine, pickWinner, posterUrl, spinDurations } from "../logic";
+import { activeFilterCount, applyPresetRange, activePreset, eligibleItems, fanPosters, heroCountLine, heroReadyLine, pickWinner, posterUrl, spinDurations } from "../logic";
+import type { PresetKey } from "../logic";
+import { usePoolSwitcher } from "../usePoolSwitcher";
+import { TonightCard } from "./TonightCard";
 import { postEvent } from "../api";
 import { PickCard } from "./PickCard";
 import { ReelMark } from "./ReelMark";
 import { toast } from "./Toast";
 import { S } from "../strings";
 import { useSession } from "../store";
-import type { PoolItem } from "../types";
+import type { CurrentPick, PoolItem } from "../types";
 
 type Phase =
   | { kind: "idle" }
@@ -33,8 +36,15 @@ interface StageProps {
   /** Active pool's display name for the hero kicker (null: no active pool). */
   poolName: string | null;
   /** Tonight's committed pick key for the current stream (null: none) — the
-   * hero's slim variant subtracts it from the count. */
-  pickKey: string | null;
+   * hero's slim variant subtracts it from the count. Mobile passes this. */
+  pickKey?: string | null;
+  /** Tonight's pick, desktop zen column only: Stage renders it ON the stage
+   * in the idle phase and shows the replace chip mid-spin. Mobile passes
+   * null and keeps its above-stage TonightCard. */
+  pick?: CurrentPick | null;
+  pickPoolItem?: PoolItem | null;
+  /** Opens the desktop filters sheet (ZenStrip's Filters button). */
+  onOpenFilters?: () => void;
   onOpenSettings: () => void;
   onLaunchDuel?: () => void;
 }
@@ -51,10 +61,15 @@ export function Stage({
   poolLoading,
   hasActivePool,
   poolName,
-  pickKey,
+  pickKey = null,
+  pick = null,
+  pickPoolItem = null,
+  onOpenFilters,
   onOpenSettings,
   onLaunchDuel,
 }: StageProps) {
+  // Desktop passes the whole pick; mobile just its key. One derived truth.
+  const effectivePickKey = pick?.item_key ?? pickKey ?? null;
   const { playerId, stream, filters, resetFilters, setFilters } = useSession();
   const queryClient = useQueryClient();
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
@@ -197,6 +212,11 @@ export function Stage({
         {live}
       </div>
 
+      {/* Mid-spin over a committed pick: name the stakes (zen replace flow). */}
+      {pick && phase.kind !== "idle" && phase.kind !== "empty" && (
+        <span className="stage__replacing">{S.watch.replacing(pick.title)}</span>
+      )}
+
       <div className="stage__viewport">
         {phase.kind === "empty" && <EmptyWheel pool={pool} filters={filters}
           onResetFilters={fixResetFilters} onIncludeSeen={fixIncludeSeen}
@@ -207,13 +227,20 @@ export function Stage({
         {phase.kind === "idle" && (
           poolLoading && hasActivePool ? (
             <LoadingPoster />
+          ) : pick ? (
+            <TonightCard
+              key={pick.item_key}
+              pick={pick}
+              variant="stage"
+              poolItem={pickPoolItem}
+            />
           ) : (
             <IdleHero
               pool={pool}
               seen={seen}
               poolName={poolName}
               hasActivePool={hasActivePool}
-              pickKey={pickKey}
+              pickKey={effectivePickKey}
             />
           )
         )}
@@ -268,6 +295,91 @@ export function Stage({
           </button>
         </div>
       )}
+
+      {phase.kind !== "empty" && (
+        <ZenStrip
+          n={eligibleItems(pool, filters, seen)
+            .filter((i) => i.item_key !== (effectivePickKey ?? "")).length}
+          hasPick={effectivePickKey != null}
+          filtersActive={activeFilterCount(filters)}
+          spinning={phase.kind === "spinning"}
+          onSpin={() => spin()}
+          onDuel={onLaunchDuel}
+          onOpenFilters={onOpenFilters}
+        />
+      )}
+    </div>
+  );
+}
+
+/** The zen column's one-row control surface (desktop only — CSS keeps it
+ * hidden outside `.zen`, and the classic spin bar hidden inside it): list,
+ * length, the filters sheet, the live count, Spin and Duel. */
+function ZenStrip({
+  n, hasPick, filtersActive, spinning, onSpin, onDuel, onOpenFilters,
+}: {
+  n: number;
+  hasPick: boolean;
+  filtersActive: number;
+  spinning: boolean;
+  onSpin: () => void;
+  onDuel?: () => void;
+  onOpenFilters?: () => void;
+}) {
+  const { stream, filters, setFilters } = useSession();
+  const { streamPools, activePool, switching, switchPool } = usePoolSwitcher();
+  const preset = activePreset(filters, stream);
+
+  return (
+    <div className="zen-strip">
+      {streamPools.length >= 2 && (
+        <select
+          className="decade-select zen-strip__select"
+          value={activePool?.id ?? ""}
+          disabled={switching}
+          onChange={(e) => switchPool(Number(e.target.value))}
+          aria-label={S.pools.watchingFrom}
+        >
+          {streamPools.map((p) => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+      )}
+      <select
+        className="decade-select zen-strip__select"
+        value={preset ?? "custom"}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v === "custom") return;
+          setFilters({ ...filters, ...applyPresetRange(v as PresetKey, stream) });
+        }}
+        aria-label={S.filters.console.runtimeLabel}
+      >
+        <option value="schoolNight">{S.filters.presets.schoolNight}</option>
+        <option value="committed">{S.filters.presets.committed}</option>
+        <option value="whatever">{S.filters.console.whatever}</option>
+        {preset === null && <option value="custom">{S.filters.console.custom}</option>}
+      </select>
+      <button type="button" className="btn-secondary zen-strip__filters" onClick={onOpenFilters}>
+        <SlidersHorizontal size={14} aria-hidden="true" />
+        {S.filters.title}
+        {filtersActive > 0 ? S.filters.console.activeCount(filtersActive) : ""}
+      </button>
+      <span className="zen-strip__count">
+        {hasPick ? heroReadyLine(n) : heroCountLine(n, stream, filtersActive > 0)}
+      </span>
+      <button
+        type="button"
+        className="spin-button zen-strip__spin"
+        onClick={onSpin}
+        disabled={spinning}
+      >
+        <Disc3 size={18} aria-hidden="true" />
+        {spinning ? S.spin.spinning : S.spin.button}
+      </button>
+      <button type="button" className="duel-button zen-strip__duel" onClick={() => onDuel?.()}>
+        <Swords size={16} aria-hidden="true" />
+      </button>
     </div>
   );
 }

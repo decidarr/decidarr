@@ -544,17 +544,6 @@ button {
   max-width: 380px;
 }
 
-/* respin footer: the stage's wheel compresses beneath a staged pick */
-.theater__stage .tonight-card--stage + .stage {
-  border-top: 1px solid var(--line);
-  margin-top: var(--s4);
-  padding-top: var(--s4);
-}
-
-.theater__stage .tonight-card--stage + .stage .idle-hero--slim {
-  min-height: 48px;
-  padding: var(--s2);
-}
 
 /* Non-spin views get a comfortable reading column rather than full width. */
 @media (min-width: 960px) {
@@ -588,6 +577,54 @@ button {
   border: none;
   box-shadow: none;
   padding: 0;
+}
+
+/* --- zen strip (v1.6 desktop) ------------------------------------------- */
+
+.zen-strip {
+  display: none; /* mobile: the classic spin bar serves */
+}
+
+.zen .zen-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  padding: var(--s3) var(--s2) 0;
+}
+
+.zen .spin-bar {
+  display: none; /* desktop: the strip serves */
+}
+
+.zen-strip__select {
+  max-width: 160px;
+}
+
+.zen-strip__count {
+  flex: 1;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--dim);
+}
+
+.zen-strip__spin {
+  flex: 0 0 auto;
+  min-width: 140px;
+}
+
+.zen-strip__duel {
+  min-height: 56px;
+  padding: 0 var(--s3);
+}
+
+.stage__replacing {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ember-text);
 }
 
 .console__label {

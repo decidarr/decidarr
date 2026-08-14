@@ -296,3 +296,22 @@ export function heroReadyLine(n: number): string {
   if (n <= 0) return S.hero.readyNone;
   return n === 1 ? S.hero.readyOne : S.hero.ready(n);
 }
+
+/** A decorative handful of posters from what the wheel could actually land
+ * on — desktop's idle-stage set dressing. Distinct, art-only, sampled with
+ * an injectable rand (Fisher–Yates) so tests are deterministic. Under two
+ * candidates the fan isn't worth drawing. */
+export function fanPosters(
+  items: PoolItem[], n = 4, rand: () => number = Math.random,
+): string[] {
+  const candidates = items.filter((it) => it.poster != null);
+  if (candidates.length < 2) return [];
+  const pool = [...candidates];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, n)
+    .map((it) => posterUrl(it.poster))
+    .filter((u): u is string => u !== null);
+}

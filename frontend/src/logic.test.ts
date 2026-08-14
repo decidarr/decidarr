@@ -9,6 +9,7 @@ import {
   defaultDuelOpponent,
   duelCandidates,
   eligibleItems,
+  fanPosters,
   formatMetaLine,
   formatWhen,
   heroCountLine,
@@ -365,5 +366,34 @@ describe("activePreset", () => {
     // a movie preset's range is not a tv preset
     expect(activePreset({ ...F0, runtimeMin: 40, runtimeMax: 110 }, "tv"))
       .toBeNull();
+  });
+});
+
+describe("fanPosters", () => {
+  const withPoster = (id: number) =>
+    item({ id, item_key: `tmdb:${id}`, poster: `/p${id}.jpg` });
+  const noPoster = (id: number) =>
+    item({ id, item_key: `tmdb:${id}`, poster: null });
+
+  it("samples up to n distinct poster urls from items that have art", () => {
+    const items = [withPoster(1), withPoster(2), withPoster(3),
+                   withPoster(4), withPoster(5), noPoster(6)];
+    const fan = fanPosters(items, 4, () => 0);
+    expect(fan).toHaveLength(4);
+    expect(new Set(fan).size).toBe(4);
+    for (const url of fan) {
+      expect(url).toMatch(/^https:\/\/image\.tmdb\.org\/t\/p\/w500\/p\d\.jpg$/);
+    }
+  });
+  it("returns fewer when the pool is small, empty under 2 candidates", () => {
+    expect(fanPosters([withPoster(1), withPoster(2), withPoster(3)], 4, () => 0))
+      .toHaveLength(3);
+    expect(fanPosters([withPoster(1), noPoster(2)], 4, () => 0)).toEqual([]);
+    expect(fanPosters([], 4, () => 0)).toEqual([]);
+  });
+  it("is deterministic with an injected rand", () => {
+    const items = [withPoster(1), withPoster(2), withPoster(3), withPoster(4)];
+    expect(fanPosters(items, 2, () => 0.99))
+      .toEqual(fanPosters(items, 2, () => 0.99));
   });
 });

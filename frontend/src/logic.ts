@@ -297,6 +297,15 @@ export function heroReadyLine(n: number): string {
   return n === 1 ? S.hero.readyOne : S.hero.ready(n);
 }
 
+/** The runtime range a length-select choice applies. */
+export function applyPresetRange(
+  key: PresetKey, stream: Stream,
+): { runtimeMin: number; runtimeMax: number } {
+  if (key === "whatever") return { runtimeMin: 0, runtimeMax: Infinity };
+  const [lo, hi] = PRESETS[stream][key];
+  return { runtimeMin: lo, runtimeMax: hi };
+}
+
 /** A decorative handful of posters from what the wheel could actually land
  * on — desktop's idle-stage set dressing. Distinct, art-only, sampled with
  * an injectable rand (Fisher–Yates) so tests are deterministic. Under two

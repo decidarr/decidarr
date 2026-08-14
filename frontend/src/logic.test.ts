@@ -4,6 +4,7 @@ import {
   STUCK_SEARCHING_MS,
   activeFilterCount,
   activePreset,
+  applyPresetRange,
   buildPlayerStatRows,
   computeFlavorTitles,
   defaultDuelOpponent,
@@ -395,5 +396,16 @@ describe("fanPosters", () => {
     const items = [withPoster(1), withPoster(2), withPoster(3), withPoster(4)];
     expect(fanPosters(items, 2, () => 0.99))
       .toEqual(fanPosters(items, 2, () => 0.99));
+  });
+});
+
+describe("applyPresetRange", () => {
+  it("maps preset keys to their stream's ranges", () => {
+    expect(applyPresetRange("schoolNight", "movie"))
+      .toEqual({ runtimeMin: 40, runtimeMax: 110 });
+    expect(applyPresetRange("committed", "tv"))
+      .toEqual({ runtimeMin: 35, runtimeMax: 90 });
+    expect(applyPresetRange("whatever", "movie"))
+      .toEqual({ runtimeMin: 0, runtimeMax: Infinity });
   });
 });

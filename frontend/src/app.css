@@ -581,6 +581,15 @@ button {
   gap: var(--s3);
 }
 
+/* Inside the desktop filters sheet the sheet supplies the chrome. */
+.console--sheet {
+  margin-top: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
 .console__label {
   font-family: var(--font-mono);
   font-size: 0.7rem;

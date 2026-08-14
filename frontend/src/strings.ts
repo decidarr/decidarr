@@ -46,6 +46,7 @@ export const S = {
       activeCount: (n: number) => ` · ${n} active`,
       whatever: "Whatever",
       whateverRange: "any length",
+      custom: "Custom",
       presetRange: (lo: number, hi: number) => `${lo}–${hi} min`,
       more: (n: number) => `+${n}`,
       less: "less",
@@ -171,6 +172,7 @@ export const S = {
     manualHint: "Couldn't match this one automatically — grab it manually.",
     clearPick: "Clear pick",
     clearPickConfirm: "Clear tonight's pick? It goes back in the pool.",
+    replacing: (title: string) => `Replacing ${title}?`,
   },
 
   // --- tonight's pick ---------------------------------------------------

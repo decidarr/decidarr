@@ -4,14 +4,11 @@
 // presentation: mobile mounts it under the spin bar, desktop puts it at the
 // top of the rail.
 import { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { ApiError, activatePool, listPools } from "../api";
 import { PRESETS, useSession } from "../store";
 import { activeFilterCount, activePreset } from "../logic";
 import { S } from "../strings";
-import { pinAwareMessage, withAdminPin } from "./AdminPin";
-import { toast } from "./Toast";
+import { usePoolSwitcher } from "../usePoolSwitcher";
 import type { PoolItem, Stream } from "../types";
 
 const RUNTIME_SCALE: Record<Stream, { min: number; max: number }> = {
@@ -22,31 +19,10 @@ const RUNTIME_SCALE: Record<Stream, { min: number; max: number }> = {
 const DECADES = [1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020];
 const GENRES_COLLAPSED = 8;
 
-export function Console({ pool }: { pool: PoolItem[] }) {
+export function Console({ pool, inSheet = false }: { pool: PoolItem[]; inSheet?: boolean }) {
   const { stream, filters, setFilters, resetFilters, blind, setBlind } = useSession();
   const [genresExpanded, setGenresExpanded] = useState(false);
-  const queryClient = useQueryClient();
-  const poolsQuery = useQuery({ queryKey: ["pools"], queryFn: listPools });
-  const streamPools = (poolsQuery.data ?? []).filter((p) => p.media_type === stream);
-  const activePoolRow = streamPools.find((p) => !!p.active) ?? null;
-  const [switching, setSwitching] = useState(false);
-
-  async function switchPool(id: number) {
-    if (id === activePoolRow?.id) return;
-    setSwitching(true);
-    try {
-      await withAdminPin(() => activatePool(id));
-      const name = streamPools.find((p) => p.id === id)?.name;
-      if (name) toast(S.pools.switched(name));
-      queryClient.invalidateQueries({ queryKey: ["pools"] });
-      queryClient.invalidateQueries({ queryKey: ["pool"] });
-      queryClient.invalidateQueries({ queryKey: ["state"] });
-    } catch (e) {
-      toast(e instanceof ApiError ? pinAwareMessage(e.detail) : S.common.writeFailed);
-    } finally {
-      setSwitching(false);
-    }
-  }
+  const { streamPools, activePool, switching, switchPool } = usePoolSwitcher();
   const scale = RUNTIME_SCALE[stream];
   const preset = activePreset(filters, stream);
   const filterCount = activeFilterCount(filters);
@@ -74,13 +50,13 @@ export function Console({ pool }: { pool: PoolItem[] }) {
   };
 
   return (
-    <section className="console" aria-label={S.filters.title}>
-      {streamPools.length >= 2 && (
+    <section className={"console" + (inSheet ? " console--sheet" : "")} aria-label={S.filters.title}>
+      {!inSheet && streamPools.length >= 2 && (
         <>
           <div className="console__label">{S.pools.watchingFrom}</div>
           <select
             className="decade-select"
-            value={activePoolRow?.id ?? ""}
+            value={activePool?.id ?? ""}
             disabled={switching}
             onChange={(e) => switchPool(Number(e.target.value))}
             aria-label={S.pools.watchingFrom}

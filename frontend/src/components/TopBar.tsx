@@ -33,12 +33,17 @@ export function TopBar({
 }) {
   return (
     <header className="top-bar">
-      <span className="top-bar__lockup">
+      {/* The masthead is a home button, per every site since 1996. */}
+      <button
+        type="button"
+        className="top-bar__lockup"
+        onClick={() => setView("spin")}
+      >
         <ReelMark size={30} />
         <span className="marquee">
           Deci<span className="marquee__tail">darr</span>
         </span>
-      </span>
+      </button>
 
       <span className="top-bar__center">
         <button

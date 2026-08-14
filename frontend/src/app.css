@@ -197,6 +197,10 @@ button {
   display: flex;
   align-items: center;
   gap: var(--s3);
+  /* it's a button now (logo -> home) — strip the chrome, keep the look */
+  background: transparent;
+  border: none;
+  padding: 0;
 }
 
 .top-bar__center {

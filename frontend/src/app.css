@@ -882,6 +882,47 @@ button {
   filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.5));
 }
 
+/* The fan (v1.5): what's in the wheel, as set dressing. Mobile never shows
+   it — the .theater ancestor only exists at >=960px. */
+.idle-hero__fan {
+  display: none;
+}
+
+.theater .idle-hero__fan {
+  display: block;
+  position: relative;
+  width: 300px;
+  height: 170px;
+}
+
+.idle-hero__fan-poster {
+  position: absolute;
+  width: 104px;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  box-shadow: var(--elev-card);
+}
+
+.idle-hero__fan-poster--0 { left: 0;     top: 14px; transform: rotate(-10deg); opacity: 0.30; }
+.idle-hero__fan-poster--1 { left: 66px;  top: 2px;  transform: rotate(-3deg);  opacity: 0.45; }
+.idle-hero__fan-poster--2 { left: 134px; top: 5px;  transform: rotate(4deg);   opacity: 0.45; }
+.idle-hero__fan-poster--3 { left: 196px; top: 18px; transform: rotate(11deg);  opacity: 0.30; }
+
+/* With the fan on stage, the emblem retires to the corner of the hero. */
+.theater .idle-hero {
+  position: relative;
+}
+
+.theater .idle-hero__mark {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+}
+
 /* --- blind mode: the reel stands in for the poster ---------------------- */
 
 .poster-box--blind {

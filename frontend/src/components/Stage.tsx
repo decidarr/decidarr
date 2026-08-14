@@ -2,11 +2,11 @@
 // -> landed(winner). The winner is picked BEFORE the animation starts —
 // the poster-shuffle is theater; assistive tech gets the result immediately
 // via an aria-live region.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Disc3, Swords } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { activeFilterCount, eligibleItems, heroCountLine, heroReadyLine, pickWinner, posterUrl, spinDurations } from "../logic";
+import { activeFilterCount, eligibleItems, fanPosters, heroCountLine, heroReadyLine, pickWinner, posterUrl, spinDurations } from "../logic";
 import { postEvent } from "../api";
 import { PickCard } from "./PickCard";
 import { ReelMark } from "./ReelMark";
@@ -289,6 +289,11 @@ function IdleHero({ pool, seen, poolName, hasActivePool, pickKey }: {
   const n = eligible.length;
   const filtersActive = activeFilterCount(filters) > 0;
   const hasPick = pickKey != null;
+  // A fresh handful per pool arrival — desktop set dressing (CSS hides it
+  // below the theater breakpoint). eslint: sampling is deliberately keyed
+  // to the pool, not every filter tweak.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const fan = useMemo(() => fanPosters(eligible), [pool]);
 
   if (hasPick) {
     const rest = eligible.some((i) => i.item_key === pickKey) ? n - 1 : n;
@@ -301,6 +306,18 @@ function IdleHero({ pool, seen, poolName, hasActivePool, pickKey }: {
   return (
     <div className="idle-hero">
       <ReelMark size={84} className="idle-hero__mark" />
+      {fan.length >= 2 && (
+        <div className="idle-hero__fan" aria-hidden="true">
+          {fan.map((src, i) => (
+            <img
+              key={src}
+              className={`idle-hero__fan-poster idle-hero__fan-poster--${i}`}
+              src={src}
+              alt=""
+            />
+          ))}
+        </div>
+      )}
       <span className="idle-hero__kicker">
         {poolName ? `${poolName} · ${S.hero.kicker}` : S.hero.kicker}
       </span>

@@ -3,13 +3,13 @@
 // steps — the wizard is just an ordered path through these, not a fork.
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { Check, Plus, RefreshCw, Trash2, Upload, UserX } from "lucide-react";
+import { Check, Pencil, Plus, RefreshCw, Trash2, Upload, UserX } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   ApiError, activatePool, backfillSeen, createPlayer, createPool, deactivatePlayer,
   deletePool, getConnections, getHealth, getPlexSections, importPool, listPlayers, listPools,
-  patchPlayer, putConnections, refreshPool, testConnection,
+  patchPlayer, putConnections, refreshPool, renamePool, testConnection,
 } from "../api";
 import type { PoolRow } from "../api";
 import { formatWhen } from "../logic";
@@ -242,6 +242,16 @@ export function PoolsSection() {
     }
   }
 
+  async function rename(id: number, name: string) {
+    try {
+      await withAdminPin(() => renamePool(id, name));
+      toast(S.settings.pools.renamed(name));
+      invalidate();
+    } catch {
+      toast(S.common.writeFailed);
+    }
+  }
+
   async function upload(id: number, file: File) {
     try {
       const r = await withAdminPin(() => importPool(id, file));
@@ -271,6 +281,7 @@ export function PoolsSection() {
           onRefresh={refresh}
           onActivate={activate}
           onDelete={remove}
+          onRename={rename}
           onUpload={upload}
           onCreated={invalidate}
         />
@@ -280,7 +291,7 @@ export function PoolsSection() {
 }
 
 function PoolStreamPanel({
-  stream, pools, traktAvailable, plexAvailable, errors, importResults, onRefresh, onActivate, onDelete, onUpload, onCreated,
+  stream, pools, traktAvailable, plexAvailable, errors, importResults, onRefresh, onActivate, onDelete, onRename, onUpload, onCreated,
 }: {
   stream: Stream;
   pools: PoolRow[];
@@ -291,9 +302,18 @@ function PoolStreamPanel({
   onRefresh: (id: number) => void;
   onActivate: (id: number) => void;
   onDelete: (id: number, name: string) => void;
+  onRename: (id: number, name: string) => void;
   onUpload: (id: number, file: File) => void;
   onCreated: () => void;
 }) {
+  // One row renames at a time; Enter/blur commits, Escape abandons.
+  const [renamingId, setRenamingId] = useState<number | null>(null);
+
+  function commitRename(p: PoolRow, raw: string) {
+    setRenamingId(null);
+    const next = raw.trim();
+    if (next && next !== p.name) onRename(p.id, next);
+  }
   const [name, setName] = useState("");
   const [source, setSource] = useState<"custom" | "tmdb" | "trakt" | "plex">("custom");
   const [listId, setListId] = useState("");
@@ -350,7 +370,34 @@ function PoolStreamPanel({
           {pools.map((p) => (
             <li key={p.id} className="pool-row">
               <div className="pool-row__header">
-                <span className="pool-row__name">{p.name}</span>
+                {renamingId === p.id ? (
+                  <input
+                    className="decade-select pool-row__rename"
+                    defaultValue={p.name}
+                    aria-label={S.settings.pools.rename(p.name)}
+                    autoFocus
+                    onBlur={(e) => commitRename(p, e.currentTarget.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") e.currentTarget.blur();
+                      if (e.key === "Escape") {
+                        e.currentTarget.value = p.name;
+                        e.currentTarget.blur();
+                      }
+                    }}
+                  />
+                ) : (
+                  <>
+                    <span className="pool-row__name">{p.name}</span>
+                    <button
+                      type="button"
+                      className="btn-link pool-row__edit"
+                      aria-label={S.settings.pools.rename(p.name)}
+                      onClick={() => setRenamingId(p.id)}
+                    >
+                      <Pencil size={13} aria-hidden="true" />
+                    </button>
+                  </>
+                )}
                 {!!p.active && <span className="pool-row__badge">{S.settings.pools.active}</span>}
                 <span className="pool-row__meta">
                   {p.refreshed_at

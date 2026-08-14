@@ -317,6 +317,8 @@ export const S = {
       deleteArmed: (n: number) =>
         n > 0 ? `Sure? Drains ${n} item${n === 1 ? "" : "s"}` : "Sure?",
       deleted: (name: string) => `${name} is gone.`,
+      rename: (name: string) => `Rename ${name}`,
+      renamed: (name: string) => `Renamed to ${name}.`,
       importResult: (imported: number, unresolved: number) =>
         unresolved > 0
           ? `Imported ${imported}, couldn't match ${unresolved}.`

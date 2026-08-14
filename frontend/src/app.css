@@ -2230,3 +2230,19 @@ button {
 .settings-view .connection-card__actions .btn-primary {
   flex: 0 0 auto;
 }
+
+/* pool rename: pencil beside the name, input swaps in place */
+.pool-row__edit {
+  color: var(--dim);
+  text-decoration: none;
+}
+
+.settings-view .pool-row__edit {
+  min-height: 24px;
+  padding: 0 var(--s1);
+}
+
+.pool-row__rename {
+  width: auto;
+  flex: 0 1 200px;
+}

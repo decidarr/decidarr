@@ -131,3 +131,17 @@ def test_delete_pool_purges_its_items(client):
     with closing(db.get_conn()) as conn:
         assert conn.execute("SELECT COUNT(*) c FROM items WHERE pool_id=?",
                             (goner,)).fetchone()["c"] == 0
+
+
+def test_rename_pool(client):
+    pid = _make_pool(client)
+    r = client.patch(f"/api/pools/{pid}", json={"name": "  Friday Fights  "})
+    assert r.status_code == 200
+    pools = {p["id"]: p for p in client.get("/api/pools").json()}
+    assert pools[pid]["name"] == "Friday Fights"
+
+
+def test_rename_pool_rejects_empty_and_missing(client):
+    pid = _make_pool(client)
+    assert client.patch(f"/api/pools/{pid}", json={"name": "   "}).status_code == 422
+    assert client.patch("/api/pools/999", json={"name": "X"}).status_code == 404

@@ -20,7 +20,7 @@ import sonarr
 from media import get_backend
 from pools import custom as custom_pool, refresh as pool_refresh, tmdb as tmdb_pool
 
-VERSION = "1.7.0"
+VERSION = "1.7.1"
 
 
 async def _daily_refresh():
@@ -436,6 +436,24 @@ def create_pool(body: PoolIn):
         conn.commit()
         pool_id = cur.lastrowid
     return {"id": pool_id}
+
+
+class PoolPatch(BaseModel):
+    name: str
+
+
+@api.patch("/api/pools/{pool_id}", dependencies=[Depends(require_admin)])
+def rename_pool(pool_id: int, body: PoolPatch):
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(422, "name_required")
+    with closing(db.get_conn()) as conn:
+        if not conn.execute("SELECT 1 FROM pools WHERE id=?",
+                            (pool_id,)).fetchone():
+            raise HTTPException(404, "pool_not_found")
+        conn.execute("UPDATE pools SET name=? WHERE id=?", (name, pool_id))
+        conn.commit()
+    return {"ok": True, "name": name}
 
 
 @api.delete("/api/pools/{pool_id}", dependencies=[Depends(require_admin)])

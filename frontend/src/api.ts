@@ -155,6 +155,11 @@ export const createPool = (p: PoolIn) =>
 export const deletePool = (id: number) =>
   call<{ ok: boolean }>(`/pools/${id}`, { method: "DELETE" });
 
+export const renamePool = (id: number, name: string) =>
+  call<{ ok: boolean; name: string }>(`/pools/${id}`, {
+    method: "PATCH", body: JSON.stringify({ name }),
+  });
+
 export const activatePool = (id: number) =>
   call<{ ok: boolean }>(`/pools/${id}/activate`, { method: "POST" });
 

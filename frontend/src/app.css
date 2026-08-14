@@ -1838,6 +1838,19 @@ button {
   outline-offset: 2px;
 }
 
+.pool-row__delete {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.pool-row__delete--armed {
+  color: var(--ember-text);
+  text-decoration: none;
+  border: 1px solid var(--ember);
+  border-radius: var(--r-chip);
+}
+
 .connection-card {
   padding: var(--s4);
   background: var(--panel);

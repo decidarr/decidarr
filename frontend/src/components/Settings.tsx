@@ -1,15 +1,15 @@
 // Admin settings: Players, Pools, Connections. Each section is exported
 // standalone so Onboarding can mount the same components inline as wizard
 // steps — the wizard is just an ordered path through these, not a fork.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { Check, Plus, RefreshCw, Upload, UserX } from "lucide-react";
+import { Check, Plus, RefreshCw, Trash2, Upload, UserX } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   ApiError, activatePool, backfillSeen, createPlayer, createPool, deactivatePlayer,
-  getConnections, getHealth, getPlexSections, importPool, listPlayers, listPools, patchPlayer,
-  putConnections, refreshPool, testConnection,
+  deletePool, getConnections, getHealth, getPlexSections, importPool, listPlayers, listPools,
+  patchPlayer, putConnections, refreshPool, testConnection,
 } from "../api";
 import type { PoolRow } from "../api";
 import { formatWhen } from "../logic";
@@ -226,6 +226,16 @@ export function PoolsSection() {
     }
   }
 
+  async function remove(id: number, name: string) {
+    try {
+      await withAdminPin(() => deletePool(id));
+      toast(S.settings.pools.deleted(name));
+      invalidate();
+    } catch {
+      toast(S.common.writeFailed);
+    }
+  }
+
   async function upload(id: number, file: File) {
     try {
       const r = await withAdminPin(() => importPool(id, file));
@@ -254,6 +264,7 @@ export function PoolsSection() {
           importResults={importResults}
           onRefresh={refresh}
           onActivate={activate}
+          onDelete={remove}
           onUpload={upload}
           onCreated={invalidate}
         />
@@ -263,7 +274,7 @@ export function PoolsSection() {
 }
 
 function PoolStreamPanel({
-  stream, pools, traktAvailable, plexAvailable, errors, importResults, onRefresh, onActivate, onUpload, onCreated,
+  stream, pools, traktAvailable, plexAvailable, errors, importResults, onRefresh, onActivate, onDelete, onUpload, onCreated,
 }: {
   stream: Stream;
   pools: PoolRow[];
@@ -273,6 +284,7 @@ function PoolStreamPanel({
   importResults: Record<number, string>;
   onRefresh: (id: number) => void;
   onActivate: (id: number) => void;
+  onDelete: (id: number, name: string) => void;
   onUpload: (id: number, file: File) => void;
   onCreated: () => void;
 }) {
@@ -281,6 +293,13 @@ function PoolStreamPanel({
   const [listId, setListId] = useState("");
   const [plexSections, setPlexSections] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  // Delete is two-tap: first arms, second fires; blur or 5s disarms.
+  const [armedId, setArmedId] = useState<number | null>(null);
+  useEffect(() => {
+    if (armedId === null) return;
+    const t = window.setTimeout(() => setArmedId(null), 5000);
+    return () => window.clearTimeout(t);
+  }, [armedId]);
 
   // Only fetched once someone actually picks the Plex source.
   const sectionsQuery = useQuery({
@@ -347,6 +366,29 @@ function PoolStreamPanel({
                 {!p.active && (
                   <button type="button" className="btn-secondary" onClick={() => onActivate(p.id)}>
                     {S.settings.pools.activate}
+                  </button>
+                )}
+                {!p.active && (
+                  <button
+                    type="button"
+                    className={
+                      "btn-link pool-row__delete" +
+                      (armedId === p.id ? " pool-row__delete--armed" : "")
+                    }
+                    onClick={() => {
+                      if (armedId === p.id) {
+                        setArmedId(null);
+                        onDelete(p.id, p.name);
+                      } else {
+                        setArmedId(p.id);
+                      }
+                    }}
+                    onBlur={() => setArmedId((a) => (a === p.id ? null : a))}
+                  >
+                    <Trash2 size={14} aria-hidden="true" />
+                    {armedId === p.id
+                      ? S.settings.pools.deleteArmed(p.item_count)
+                      : S.settings.pools.delete}
                   </button>
                 )}
                 {p.source === "custom" && (

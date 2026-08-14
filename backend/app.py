@@ -20,7 +20,7 @@ import sonarr
 from media import get_backend
 from pools import custom as custom_pool, refresh as pool_refresh, tmdb as tmdb_pool
 
-VERSION = "1.6.1"
+VERSION = "1.6.2"
 
 
 async def _daily_refresh():
@@ -441,6 +441,13 @@ def create_pool(body: PoolIn):
 @api.delete("/api/pools/{pool_id}", dependencies=[Depends(require_admin)])
 def delete_pool(pool_id: int):
     with closing(db.get_conn()) as conn:
+        row = conn.execute("SELECT active FROM pools WHERE id=?",
+                           (pool_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "pool_not_found")
+        if row["active"]:
+            # the stream must always have a list to spin from
+            raise HTTPException(409, "pool_active")
         conn.execute("DELETE FROM items WHERE pool_id=?", (pool_id,))
         conn.execute("DELETE FROM pools WHERE id=?", (pool_id,))
         conn.commit()

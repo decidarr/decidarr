@@ -307,6 +307,10 @@ export const S = {
       neverRefreshed: "Never refreshed",
       itemCount: (n: number) => `${n} item${n === 1 ? "" : "s"}`,
       lastError: (msg: string) => `Last refresh failed: ${msg}`,
+      delete: "Delete",
+      deleteArmed: (n: number) =>
+        n > 0 ? `Sure? Drains ${n} item${n === 1 ? "" : "s"}` : "Sure?",
+      deleted: (name: string) => `${name} is gone.`,
       importResult: (imported: number, unresolved: number) =>
         unresolved > 0
           ? `Imported ${imported}, couldn't match ${unresolved}.`

@@ -100,3 +100,34 @@ def test_import_resolves_and_reports_unresolved(client, monkeypatch):
     body = r.json()
     assert body["imported"] == 2
     assert body["unresolved"] == ["Totally Made Up, The"]
+
+
+def test_delete_active_pool_refused(client):
+    pid = _make_pool(client)
+    client.post(f"/api/pools/{pid}/activate")
+    r = client.delete(f"/api/pools/{pid}")
+    assert r.status_code == 409
+    assert r.json()["detail"] == "pool_active"
+    assert [p["id"] for p in client.get("/api/pools").json()] == [pid]
+
+
+def test_delete_missing_pool_404(client):
+    assert client.delete("/api/pools/999").status_code == 404
+
+
+def test_delete_pool_purges_its_items(client):
+    keep = _make_pool(client, cfg={"items": [
+        {"tmdb_id": 603, "title": "The Matrix", "year": 1999}]})
+    goner = _make_pool(client, cfg={"items": [
+        {"tmdb_id": 604, "title": "Reloaded", "year": 2003}]})
+    client.post(f"/api/pools/{keep}/activate")
+    for pid in (keep, goner):
+        client.post(f"/api/pools/{pid}/refresh")
+    r = client.delete(f"/api/pools/{goner}")
+    assert r.status_code == 200 and r.json() == {"ok": True}
+    assert [p["id"] for p in client.get("/api/pools").json()] == [keep]
+    import db
+    from contextlib import closing
+    with closing(db.get_conn()) as conn:
+        assert conn.execute("SELECT COUNT(*) c FROM items WHERE pool_id=?",
+                            (goner,)).fetchone()["c"] == 0

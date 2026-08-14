@@ -92,19 +92,25 @@ export function PlayersSection() {
         <ul className="settings-list">
           {players.map((p) => (
             <li key={p.id} className="settings-list__row">
-              <span>{p.emoji ? `${p.emoji} ${p.name}` : p.name}</span>
+              <span className="settings-list__name">
+                {p.emoji ? `${p.emoji} ${p.name}` : p.name}
+              </span>
               {server && (
-                <input
-                  className="player-row__mapping"
-                  type="text"
-                  defaultValue={(server === "plex" ? p.plex_user : p.jellyfin_user) ?? ""}
-                  placeholder={server === "plex"
-                    ? S.settings.players.plexUser
-                    : S.settings.players.jellyfinUser}
-                  aria-label={S.settings.players.mappingHint(
-                    server === "plex" ? "Plex" : "Jellyfin")}
-                  onBlur={(e) => saveMapping(p, e.currentTarget.value)}
-                />
+                <label className="player-row__map">
+                  <span className="player-row__map-label">
+                    {server === "plex"
+                      ? S.settings.players.plexUser
+                      : S.settings.players.jellyfinUser}
+                  </span>
+                  <input
+                    className="player-row__mapping"
+                    type="text"
+                    defaultValue={(server === "plex" ? p.plex_user : p.jellyfin_user) ?? ""}
+                    aria-label={S.settings.players.mappingHint(
+                      server === "plex" ? "Plex" : "Jellyfin")}
+                    onBlur={(e) => saveMapping(p, e.currentTarget.value)}
+                  />
+                </label>
               )}
               <button type="button" className="btn-link" onClick={() => remove(p.id)}>
                 <UserX size={16} aria-hidden="true" />
@@ -346,18 +352,18 @@ function PoolStreamPanel({
               <div className="pool-row__header">
                 <span className="pool-row__name">{p.name}</span>
                 {!!p.active && <span className="pool-row__badge">{S.settings.pools.active}</span>}
+                <span className="pool-row__meta">
+                  {p.refreshed_at
+                    ? S.settings.pools.refreshedAt(formatWhen(p.refreshed_at))
+                    : S.settings.pools.neverRefreshed}
+                  {" · "}
+                  {S.settings.pools.itemCount(p.item_count)}
+                </span>
               </div>
-              <p className="pool-row__meta">
-                {p.refreshed_at
-                  ? S.settings.pools.refreshedAt(formatWhen(p.refreshed_at))
-                  : S.settings.pools.neverRefreshed}
-                {" · "}
-                {S.settings.pools.itemCount(p.item_count)}
-              </p>
               {errors[p.id] && (
                 <p className="pool-row__error">{S.settings.pools.lastError(errors[p.id])}</p>
               )}
-              {importResults[p.id] && <p className="pool-row__meta">{importResults[p.id]}</p>}
+              {importResults[p.id] && <p className="pool-row__note">{importResults[p.id]}</p>}
               <div className="pool-row__actions">
                 <button type="button" className="btn-secondary" onClick={() => onRefresh(p.id)}>
                   <RefreshCw size={14} aria-hidden="true" />
@@ -731,14 +737,51 @@ function BackfillRow() {
 
 // --- Settings (assembled view) ------------------------------------------
 
+// The Back Office: one section on stage at a time, picked from a rail
+// (desktop) or a chip row (mobile). Plain state, same as App's views.
+type SettingsSection = "players" | "pools" | "autolog" | "connections";
+
+const SECTIONS: { key: SettingsSection; label: string }[] = [
+  { key: "players", label: S.settings.nav.players },
+  { key: "pools", label: S.settings.nav.pools },
+  { key: "autolog", label: S.settings.nav.autolog },
+  { key: "connections", label: S.settings.nav.connections },
+];
+
 export function Settings() {
+  const [section, setSection] = useState<SettingsSection>("players");
+  const healthQuery = useQuery({ queryKey: ["health"], queryFn: getHealth });
+  const version = healthQuery.data?.version;
+
   return (
     <div className="settings-view">
-      <PlayersSection />
-      <AutologSection />
-      <PoolsSection />
-      <ConnectionsSection />
-      <p className="settings-footer">{S.attribution.tmdb}</p>
+      <nav className="settings-rail" aria-label={S.settings.title}>
+        <ul className="settings-rail__list">
+          {SECTIONS.map((s) => (
+            <li key={s.key}>
+              <button
+                type="button"
+                className={
+                  "settings-rail__link" +
+                  (section === s.key ? " settings-rail__link--active" : "")
+                }
+                aria-current={section === s.key ? "true" : undefined}
+                onClick={() => setSection(s.key)}
+              >
+                {s.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+        {version && <p className="settings-rail__version">v{version}</p>}
+      </nav>
+      <div className="settings-content">
+        {section === "players" && <PlayersSection />}
+        {section === "autolog" && <AutologSection />}
+        {section === "pools" && <PoolsSection />}
+        {section === "connections" && <ConnectionsSection />}
+        <p className="settings-footer">{S.attribution.tmdb}</p>
+      </div>
     </div>
   );
 }

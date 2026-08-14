@@ -261,6 +261,12 @@ export const S = {
   // --- settings / admin ----------------------------------------------
   settings: {
     title: "Settings",
+    nav: {
+      players: "Players",
+      pools: "Pools",
+      autolog: "Auto-log",
+      connections: "Connections",
+    },
     pinRequired: "Enter the admin PIN to make changes.",
     pinIncorrect: "Wrong PIN.",
     pinCancelled: "PIN entry cancelled.",

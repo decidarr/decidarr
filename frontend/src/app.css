@@ -319,6 +319,46 @@ button {
   }
 }
 
+/* C · Pill Popover (v1.9.2): on desktop the player switcher drops from
+ * the top bar's pill like an account menu — no scrim, click-away still
+ * closes via the (now invisible) backdrop. Mobile keeps its bottom sheet;
+ * the full-screen first-run gate is untouched. */
+@media (min-width: 960px) {
+  .sheet-overlay--identity {
+    background: transparent;
+    align-items: flex-start;
+    justify-content: center;
+  }
+
+  .sheet-overlay--identity .sheet {
+    width: auto;
+    min-width: 300px;
+    max-width: 380px;
+    margin-top: 64px;
+    border-bottom: 1px solid var(--line);
+    border-radius: var(--r-card);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), var(--edge-hi-soft);
+    animation: popover-down var(--t-move) ease-out;
+  }
+}
+
+@keyframes popover-down {
+  from {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-overlay--identity .sheet {
+    animation: none;
+  }
+}
+
 .sheet__header {
   display: flex;
   align-items: center;

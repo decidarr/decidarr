@@ -51,7 +51,7 @@ export function IdentityGate({ players, current, onSelect, onClose }: IdentityGa
   }
 
   return (
-    <div className="sheet-overlay" role="presentation" onClick={onClose}>
+    <div className="sheet-overlay sheet-overlay--identity" role="presentation" onClick={onClose}>
       <div
         className="sheet identity-gate identity-gate--sheet"
         role="dialog"

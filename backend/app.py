@@ -20,7 +20,7 @@ import sonarr
 from media import get_backend
 from pools import custom as custom_pool, refresh as pool_refresh, tmdb as tmdb_pool
 
-VERSION = "1.8.2"
+VERSION = "1.9.0"
 
 
 async def _daily_refresh():
@@ -266,31 +266,6 @@ def clear_pick(stream: str):
         conn.commit()
     return {"ok": True}
 
-
-class DuelWinIn(BaseModel):
-    player: int
-    media_type: str
-    item_key: str
-    title: str
-    year: int | None = None
-    tmdb_id: int | None = None
-    replace: bool = False
-
-
-@api.post("/api/duel/win")
-def duel_win(body: DuelWinIn):
-    if body.media_type not in ("movie", "tv"):
-        raise HTTPException(422, "bad_media_type")
-    with closing(db.get_conn()) as conn:
-        try:
-            db.upsert_pick(conn, body.media_type, body.item_key, body.title,
-                           body.year, body.tmdb_id, None, body.player,
-                           body.replace)
-        except db.PendingPickError:
-            raise HTTPException(409, "pending_pick")
-        db.log_event(conn, body.player, body.media_type, body.item_key,
-                     body.title, body.year, "duel_won")
-    return {"ok": True}
 
 
 async def _seerr_status(item_key, media_type, title, year):

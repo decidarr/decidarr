@@ -1,5 +1,5 @@
 import type {
-  Filters, HistoryEntry, Player, PoolItem, Progress as ProgressData, StatsBundle,
+  Filters, Player, PoolItem, Progress as ProgressData, StatsBundle,
   Stream, Verdict,
 } from "./types";
 import { S } from "./strings";
@@ -50,39 +50,6 @@ export const maskTitle = (_title: string) => "▓".repeat(MASK_WIDTH);
 export const spinDurations = (reducedMotion: boolean) =>
   reducedMotion ? { spin: 300, respin: 300, fate: 300 }
                 : { spin: 2500, respin: 1200, fate: 1500 };
-
-// --- duel (Task 21) ---------------------------------------------------
-
-/** Candidates for one duel slot's spin: the normal eligible pool, minus
- * whatever the OTHER slot currently holds — duels never mirror-match a
- * title against itself. `excludeKey` is null when the other slot hasn't
- * landed on anything yet (first spin of a fresh duel). */
-export function duelCandidates(
-  items: PoolItem[], f: Filters, seen: string[], excludeKey: string | null,
-): PoolItem[] {
-  const pool = eligibleItems(items, f, seen);
-  return excludeKey ? pool.filter((it) => it.item_key !== excludeKey) : pool;
-}
-
-/** Default second duelist for the 3+-player picker: the most recently
- * active player other than `currentId`, per `state.history[0..]` (newest
- * first). A history entry can reference a player who's since been
- * deactivated (no longer in `players` — /api/state's players list only
- * ever contains active players), so history hits are validated against
- * `players` before being trusted. Falls back to the first other active
- * player when history has nothing usable to say (fresh install, everyone's
- * history is `currentId`'s own, or the only history hit is deactivated).
- * Returns null only when no other active player exists to duel. */
-export function defaultDuelOpponent(
-  players: Player[], currentId: number | null, history: HistoryEntry[],
-): number | null {
-  if (currentId == null) return null;
-  const activeIds = new Set(players.map((p) => p.id));
-  const fromHistory = history.find((h) => h.player !== currentId && activeIds.has(h.player));
-  if (fromHistory) return fromHistory.player;
-  const other = players.find((p) => p.id !== currentId);
-  return other ? other.id : null;
-}
 
 /** Count of non-default filter *fields* — drives the Header's "Filters · N"
  * badge. Runtime min/max count as a single field (one dual-handle range),
@@ -185,7 +152,6 @@ export interface PlayerStatRow {
   requested: number;
   spun: number;
   vetoed: number;
-  duel_won: number;
 }
 
 /** Joins /api/stats' name-keyed `combined` map back onto player ids —
@@ -201,7 +167,7 @@ export function buildPlayerStatRows(
     return {
       id: p.id, name: p.name,
       watched: s.watched ?? 0, requested: s.requested ?? 0,
-      spun: s.spun ?? 0, vetoed: s.vetoed ?? 0, duel_won: s.duel_won ?? 0,
+      spun: s.spun ?? 0, vetoed: s.vetoed ?? 0,
     };
   });
 }
@@ -211,14 +177,14 @@ export interface FlavorTitle {
   label: string;
 }
 
-/** "Most Vetoed" / "Duel Champion" / "The Summoner" — highest count per
+/** "Most Vetoed" / "The Summoner" — highest count per
  * category wins; ties go to the LOWER player id (deterministic, no
  * randomness in what's otherwise a scoreboard); a category where every
  * player is at 0 crowns nobody (never a 0-0 "winner"). Pure so the
  * tie/zero rules are unit-testable without mounting the Board. */
 export function computeFlavorTitles(rows: PlayerStatRow[]): FlavorTitle[] {
   const crown = (
-    key: "vetoed" | "duel_won" | "requested", label: string,
+    key: "vetoed" | "requested", label: string,
   ): FlavorTitle | null => {
     let best: PlayerStatRow | null = null;
     for (const r of rows) {
@@ -231,7 +197,6 @@ export function computeFlavorTitles(rows: PlayerStatRow[]): FlavorTitle[] {
   };
   return [
     crown("vetoed", S.flavorTitles.mostVetoed),
-    crown("duel_won", S.flavorTitles.duelChampion),
     crown("requested", S.flavorTitles.theSummoner),
   ].filter((t): t is FlavorTitle => t !== null);
 }

@@ -1,13 +1,17 @@
+from contextlib import closing
+
 import config
+import db
 
 
-def _seed(client):
+def _seed(client, db_file):
     p1 = client.post("/api/players", json={"name": "Tim", "emoji": "🐊"}).json()
     p2 = client.post("/api/players", json={"name": "Sam", "emoji": "🐍"}).json()
-    assert client.post("/api/duel/win", json={
-        "player": p1["id"], "media_type": "movie", "item_key": "tmdb:1",
-        "title": "Movie One", "year": 2020,
-    }).status_code == 200
+    # duel_won stays a valid HISTORICAL action after the duel's removal
+    # (v1.9) — logged directly, since no route writes it anymore.
+    with closing(db.get_conn(db_file)) as conn:
+        db.log_event(conn, p1["id"], "movie", "tmdb:1", "Movie One", 2020,
+                     "duel_won")
     assert client.post("/api/event", json={
         "player": p2["id"], "media_type": "tv", "item_key": "tmdb:2",
         "title": "Show Two", "year": 2021, "action": "spun",
@@ -15,8 +19,8 @@ def _seed(client):
     return p1, p2
 
 
-def test_stats_route_shape_and_counts(client):
-    p1, p2 = _seed(client)
+def test_stats_route_shape_and_counts(client, db_file):
+    p1, p2 = _seed(client, db_file)
     r = client.get("/api/stats")
     assert r.status_code == 200
     body = r.json()
@@ -29,8 +33,8 @@ def test_stats_route_shape_and_counts(client):
     assert body["top_grudges"] == []
 
 
-def test_stats_route_not_admin_gated(client):
-    _seed(client)
+def test_stats_route_not_admin_gated(client, db_file):
+    _seed(client, db_file)
     config.set_setting("admin_pin", "1234")
     r = client.get("/api/stats")
     assert r.status_code == 200

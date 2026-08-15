@@ -1,6 +1,5 @@
 import type {
   ConnectionsBundle,
-  DuelWinIn,
   EventIn,
   HealthResult,
   PlayerIn,
@@ -91,11 +90,6 @@ export const postWatch = (w: WatchIn) =>
     { method: "POST", body: JSON.stringify(w) },
   );
 
-export const duelWin = (d: DuelWinIn) =>
-  call<{ ok: boolean }>("/duel/win", {
-    method: "POST",
-    body: JSON.stringify(d),
-  });
 
 export const clearPick = (stream: Stream) =>
   call<{ ok: boolean }>(`/pick?stream=${stream}`, { method: "DELETE" });

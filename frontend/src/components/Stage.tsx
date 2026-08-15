@@ -3,7 +3,7 @@
 // the poster-shuffle is theater; assistive tech gets the result immediately
 // via an aria-live region.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Disc3, SlidersHorizontal, Swords } from "lucide-react";
+import { Disc3, SlidersHorizontal } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { activeFilterCount, applyPresetRange, activePreset, eligibleItems, fanPosters, heroCountLine, heroReadyLine, pickWinner, posterUrl, shuffleReel, spinDurations } from "../logic";
@@ -46,7 +46,6 @@ interface StageProps {
   /** Opens the desktop filters sheet (ZenStrip's Filters button). */
   onOpenFilters?: () => void;
   onOpenSettings: () => void;
-  onLaunchDuel?: () => void;
 }
 
 function reducedMotion(): boolean {
@@ -66,7 +65,6 @@ export function Stage({
   pickPoolItem = null,
   onOpenFilters,
   onOpenSettings,
-  onLaunchDuel,
 }: StageProps) {
   // Desktop passes the whole pick; mobile just its key. One derived truth.
   const effectivePickKey = pick?.item_key ?? pickKey ?? null;
@@ -133,9 +131,7 @@ export function Stage({
   }
 
   // Veto (grace expiry) and Seen-it both invalidate the current landed pick
-  // and want a fresh one immediately — same shortened beat as a duel slot
-  // re-spin (design spec: "Re-spins (veto, duel slot) reuse the same beat,
-  // shortened").
+  // and want a fresh one immediately — the design spec's shortened re-spin beat.
   const respin = () => spin({ respin: true });
 
   // Poster-shuffle: cycles the displayed poster through candidates with a
@@ -308,14 +304,6 @@ export function Stage({
             <Disc3 size={20} aria-hidden="true" />
             {phase.kind === "spinning" ? S.spin.spinning : S.spin.button}
           </button>
-          <button
-            type="button"
-            className="duel-button"
-            onClick={() => onLaunchDuel?.()}
-          >
-            <Swords size={18} aria-hidden="true" />
-            {S.spin.duel}
-          </button>
         </div>
       )}
 
@@ -324,7 +312,6 @@ export function Stage({
           filtersActive={activeFilterCount(filters)}
           spinning={phase.kind === "spinning"}
           onSpin={() => spin()}
-          onDuel={onLaunchDuel}
           onOpenFilters={onOpenFilters}
         />
       )}
@@ -334,14 +321,13 @@ export function Stage({
 
 /** The zen column's one-row control surface (desktop only — CSS keeps it
  * hidden outside `.zen`, and the classic spin bar hidden inside it): list,
- * length, the filters sheet, the live count, Spin and Duel. */
+ * length, the filters sheet, and Spin. */
 function ZenStrip({
-  filtersActive, spinning, onSpin, onDuel, onOpenFilters,
+  filtersActive, spinning, onSpin, onOpenFilters,
 }: {
   filtersActive: number;
   spinning: boolean;
   onSpin: () => void;
-  onDuel?: () => void;
   onOpenFilters?: () => void;
 }) {
   const { stream, filters, setFilters } = useSession();
@@ -395,9 +381,6 @@ function ZenStrip({
       >
         <Disc3 size={18} aria-hidden="true" />
         {spinning ? S.spin.spinning : S.spin.button}
-      </button>
-      <button type="button" className="duel-button zen-strip__duel" onClick={() => onDuel?.()}>
-        <Swords size={16} aria-hidden="true" />
       </button>
     </div>
   );

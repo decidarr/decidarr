@@ -1,12 +1,11 @@
 import { useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Disc3, History as HistoryIcon, Settings as SettingsIcon, Trophy } from "lucide-react";
 
 import { getPool, getState } from "./api";
 import { AdminPinPrompt } from "./components/AdminPin";
 import { Console } from "./components/Console";
-import { Duel } from "./components/Duel";
 import { Header } from "./components/Header";
 import { IdentityGate } from "./components/IdentityGate";
 import { Onboarding } from "./components/Onboarding";
@@ -30,9 +29,7 @@ function AppShell() {
   const [view, setView] = useState<View>("spin");
   const [identityOpen, setIdentityOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [duelOpen, setDuelOpen] = useState(false);
   const [onboardingSkipped, setOnboardingSkipped] = useState(false);
-  const queryClient = useQueryClient();
   const isDesktop = useIsDesktop();
 
   const stateQuery = useQuery({ queryKey: ["state"], queryFn: getState });
@@ -138,7 +135,6 @@ function AppShell() {
                   ? pool.find((i) => i.item_key === currentPick.item_key) ?? null
                   : null}
                 onOpenSettings={() => setView("settings")}
-                onLaunchDuel={() => setDuelOpen(true)}
                 onOpenFilters={() => setFiltersOpen(true)}
               />
             </div>
@@ -180,7 +176,6 @@ function AppShell() {
               poolName={state.pools[stream]?.name ?? null}
               pickKey={currentPick?.item_key ?? null}
               onOpenSettings={() => setView("settings")}
-              onLaunchDuel={() => setDuelOpen(true)}
             />
             <Console pool={pool} />
           </>
@@ -213,21 +208,6 @@ function AppShell() {
           current={playerId}
           onSelect={pickPlayer}
           onClose={() => setIdentityOpen(false)}
-        />
-      )}
-      {duelOpen && (
-        <Duel
-          players={state.players}
-          pool={pool}
-          seen={seen}
-          onClose={() => setDuelOpen(false)}
-          onDone={() => {
-            // duelWin already committed current_picks server-side — close the
-            // duel and let TonightCard pick it up, same handoff as PickCard's
-            // onCommitted.
-            setDuelOpen(false);
-            queryClient.invalidateQueries({ queryKey: ["state"] });
-          }}
         />
       )}
 

@@ -153,7 +153,6 @@ export function Board({ players }: BoardProps) {
                 <span>{S.board.stat.requested}: {r.requested}</span>
                 <span>{S.board.stat.spun}: {r.spun}</span>
                 <span>{S.board.stat.vetoed}: {r.vetoed}</span>
-                <span>{S.board.stat.duelWon}: {r.duel_won}</span>
               </div>
             </li>
           ))}

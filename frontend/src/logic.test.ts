@@ -7,8 +7,6 @@ import {
   applyPresetRange,
   buildPlayerStatRows,
   computeFlavorTitles,
-  defaultDuelOpponent,
-  duelCandidates,
   eligibleItems,
   fanPosters,
   shuffleReel,
@@ -23,7 +21,7 @@ import {
   verdictToAction,
 } from "./logic";
 import { S } from "./strings";
-import type { HistoryEntry, Player, PoolItem, Progress } from "./types";
+import type { Player, PoolItem, Progress } from "./types";
 
 const item = (over: Partial<PoolItem>): PoolItem => ({
   id: 1, tmdb_id: 603, item_key: "tmdb:603", title: "The Matrix",
@@ -88,55 +86,7 @@ describe("pickWinner", () => {
   });
 });
 
-describe("duelCandidates", () => {
-  it("excludes the other slot's current item on top of normal eligibility", () => {
-    const items = [item({}), item({ id: 2, item_key: "tmdb:604" }),
-                   item({ id: 3, item_key: "tmdb:605" })];
-    expect(duelCandidates(items, F, [], "tmdb:604").map((i) => i.item_key))
-      .toEqual(["tmdb:603", "tmdb:605"]);
-  });
-  it("passes through unchanged when nothing to exclude yet", () => {
-    const items = [item({}), item({ id: 2, item_key: "tmdb:604" })];
-    expect(duelCandidates(items, F, [], null)).toEqual(items);
-  });
-  it("still respects seen/filters before excluding", () => {
-    const items = [item({}), item({ id: 2, item_key: "tmdb:604" })];
-    expect(duelCandidates(items, F, ["tmdb:603"], "tmdb:604")).toEqual([]);
-  });
-});
 
-describe("defaultDuelOpponent", () => {
-  const players: Player[] = [
-    { id: 1, name: "Alice", emoji: null },
-    { id: 2, name: "Bob", emoji: null },
-    { id: 3, name: "Cara", emoji: null },
-  ];
-  const hist = (player: number): HistoryEntry => ({
-    ts: "2026-07-11T00:00:00Z", player, player_name: "x", media_type: "movie",
-    item_key: "tmdb:1", title: "x", year: null, action: "watched", source: "user",
-  });
-
-  it("picks the most recently active other player from history", () => {
-    expect(defaultDuelOpponent(players, 1, [hist(3), hist(2)])).toBe(3);
-  });
-  it("skips history entries belonging to the current player", () => {
-    expect(defaultDuelOpponent(players, 1, [hist(1), hist(1), hist(2)])).toBe(2);
-  });
-  it("falls back to the first other active player with no usable history", () => {
-    expect(defaultDuelOpponent(players, 1, [])).toBe(2);
-    expect(defaultDuelOpponent(players, 1, [hist(1)])).toBe(2);
-  });
-  it("skips a history entry referencing a player no longer in the active list", () => {
-    // 99 isn't in `players` (deactivated) — skip it and use the next hit.
-    expect(defaultDuelOpponent(players, 1, [hist(99), hist(3)])).toBe(3);
-    // No valid history hit at all — fall back to the first other active player.
-    expect(defaultDuelOpponent(players, 1, [hist(99)])).toBe(2);
-  });
-  it("returns null with no current identity or no other players", () => {
-    expect(defaultDuelOpponent(players, null, [])).toBeNull();
-    expect(defaultDuelOpponent([players[0]], 1, [])).toBeNull();
-  });
-});
 
 describe("verdictToAction", () => {
   it("maps verdicts to buttons", () => {
@@ -261,15 +211,15 @@ describe("buildPlayerStatRows / computeFlavorTitles", () => {
   it("joins name-keyed stats back onto ids, defaulting missing actions to 0", () => {
     expect(buildPlayerStatRows(players, { Tim: { watched: 3, vetoed: 1 } }))
       .toEqual([
-        { id: 1, name: "Tim", watched: 3, requested: 0, spun: 0, vetoed: 1, duel_won: 0 },
-        { id: 2, name: "Sam", watched: 0, requested: 0, spun: 0, vetoed: 0, duel_won: 0 },
+        { id: 1, name: "Tim", watched: 3, requested: 0, spun: 0, vetoed: 1 },
+        { id: 2, name: "Sam", watched: 0, requested: 0, spun: 0, vetoed: 0 },
       ]);
   });
 
   it("defaults players missing entirely from the stats map to all zeros", () => {
     expect(buildPlayerStatRows(players, {})).toEqual([
-      { id: 1, name: "Tim", watched: 0, requested: 0, spun: 0, vetoed: 0, duel_won: 0 },
-      { id: 2, name: "Sam", watched: 0, requested: 0, spun: 0, vetoed: 0, duel_won: 0 },
+      { id: 1, name: "Tim", watched: 0, requested: 0, spun: 0, vetoed: 0 },
+      { id: 2, name: "Sam", watched: 0, requested: 0, spun: 0, vetoed: 0 },
     ]);
   });
 
@@ -286,12 +236,11 @@ describe("buildPlayerStatRows / computeFlavorTitles", () => {
 
   it("crowns each category independently — one player can win more than one", () => {
     const rows = buildPlayerStatRows(players, {
-      Tim: { vetoed: 3, duel_won: 1 },
-      Sam: { duel_won: 4, requested: 5 },
+      Tim: { vetoed: 3 },
+      Sam: { requested: 5 },
     });
     expect(computeFlavorTitles(rows)).toEqual([
       { playerId: 1, label: S.flavorTitles.mostVetoed },
-      { playerId: 2, label: S.flavorTitles.duelChampion },
       { playerId: 2, label: S.flavorTitles.theSummoner },
     ]);
   });

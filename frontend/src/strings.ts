@@ -64,7 +64,6 @@ export const S = {
     button: "Spin",
     spinning: "Spinning…",
     again: "Spin again",
-    duel: "Duel",
   },
 
   // --- idle hero (v1.2.3 landing) ---------------------------------------
@@ -180,25 +179,10 @@ export const S = {
     title: "Tonight",
   },
 
-  // --- duel -----------------------------------------------------------
-  duel: {
-    title: "Duel",
-    start: "Start Duel",
-    pickerTitle: "Who's dueling?",
-    needTwoPlayers: "Duels need at least two players.",
-    spinning: "Fate is deciding…",
-    fate: "Fate decides",
-    rematch: "Rematch",
-    vs: "VS",
-    seenItRespin: "Already seen it — respinning that side.",
-    crownWinner: "has the crown tonight.",
-    proceedToSummon: "Summon the winner",
-  },
 
   // --- flavor titles (scoreboard) --------------------------------------
   flavorTitles: {
     mostVetoed: "Most Vetoed",
-    duelChampion: "Duel Champion",
     theSummoner: "The Summoner",
   },
 
@@ -226,7 +210,6 @@ export const S = {
       requested: "Requested",
       spun: "Spun",
       vetoed: "Vetoed",
-      duelWon: "Duels won",
     },
   },
 

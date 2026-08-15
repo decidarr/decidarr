@@ -504,20 +504,16 @@ button {
 .zen-strip__spin {
   flex: 0 0 auto;
   min-width: 140px;
-  margin-left: auto; /* Spin and Duel keep the right edge */
+  margin-left: auto; /* Spin keeps the right edge */
 }
 
-.zen-strip__duel {
-  padding: 0 var(--s3);
-}
 
 /* One Height (v1.7.3): every strip control stands 44px on one shared
- * baseline — selects, Filters, Spin, Duel. Compounds outrank the taller
- * base .spin-button/.duel-button/.btn-secondary rules defined later. */
+ * baseline — selects, Filters, Spin. Compounds outrank the taller
+ * base .spin-button/.btn-secondary rules defined later. */
 .zen-strip .zen-strip__select,
 .zen-strip .zen-strip__filters,
-.zen-strip .zen-strip__spin,
-.zen-strip .zen-strip__duel {
+.zen-strip .zen-strip__spin {
   height: 44px;
   min-height: 44px;
 }
@@ -998,7 +994,6 @@ button {
 }
 
 .btn-secondary:active,
-.duel-button:active,
 .btn-veto:active,
 .chip:active {
   transform: translateY(1px);
@@ -1054,19 +1049,6 @@ button {
   cursor: default;
 }
 
-.duel-button {
-  min-height: 56px;
-  padding: 0 var(--s4);
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-  background: var(--panel);
-  color: var(--cream);
-  border: 1px solid var(--line);
-  border-radius: var(--r-chip);
-  box-shadow: var(--elev-1);
-  transition: transform var(--t-micro), box-shadow var(--t-micro);
-}
 
 /* --- toast --------------------------------------------------------- */
 
@@ -1363,159 +1345,6 @@ button {
   flex: 1;
 }
 
-/* --- duel (Task 21) ------------------------------------------------- */
-
-.duel-sheet {
-  display: flex;
-  flex-direction: column;
-}
-
-.duel-picker {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s4);
-}
-
-.duel-picker__label {
-  margin: 0;
-  color: var(--dim);
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.duel-picker__row {
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-}
-
-.duel-picker__row .decade-select {
-  flex: 1;
-}
-
-.duel-battle {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--s5);
-}
-
-.duel-slots {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--s3);
-}
-
-.duel-slot {
-  width: min(44vw, 190px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--s2);
-  text-align: center;
-}
-
-.duel-slot .poster-box {
-  width: 100%;
-}
-
-.duel-slot__name {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--gold);
-}
-
-.duel-slot__title {
-  margin: 0;
-  font-size: 0.9rem;
-}
-
-.duel-slot__meta {
-  margin: 0;
-  color: var(--dim);
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-}
-
-.duel-slot__actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s2);
-  width: 100%;
-}
-
-.duel-vs {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-weight: 600;
-  color: var(--dim);
-  flex-shrink: 0;
-}
-
-.duel-fate {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--s3);
-}
-
-.duel-fate__button {
-  min-height: 56px;
-  width: 100%;
-  max-width: 320px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--s2);
-  background: var(--panel);
-  border: 1px solid var(--gold);
-  border-radius: var(--r-chip);
-  color: var(--gold);
-  font-weight: 600;
-}
-
-.duel-fate__button:disabled {
-  opacity: 0.6;
-}
-
-.duel-fate__button--flipping {
-  animation: duel-flip var(--t-fate) ease-in-out;
-}
-
-@keyframes duel-flip {
-  0% { transform: rotateY(0deg); }
-  50% { transform: rotateY(180deg); }
-  100% { transform: rotateY(360deg); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .duel-fate__button--flipping {
-    animation: none;
-  }
-}
-
-.duel-rematch {
-  min-height: 44px;
-  padding: 0 var(--s4);
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-  background: transparent;
-  border: 1px solid var(--line);
-  border-radius: var(--r-chip);
-  color: var(--cream);
-}
-
-.duel-rematch:disabled {
-  opacity: 0.6;
-}
 
 /* --- shared list/empty-state primitives (Task 22) ----------------------- */
 

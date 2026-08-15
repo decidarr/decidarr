@@ -3,8 +3,9 @@
 The watch-night decision engine for the *arr stack. Spin a wheel over a
 curated pool (Movies or TV, never mixed); the pick is availability-checked
 against Plex/Jellyfin; one tap summons it via Overseerr/Jellyseerr with a
-live Radarr/Sonarr download progress bar. Social layer: veto tokens, duels,
-blind picks, grudge list, scoreboard.
+live Radarr/Sonarr download progress bar. Social layer: veto tokens,
+blind picks, grudge list, scoreboard. (Duels were removed in v1.9 —
+'duel_won' remains a valid historical event action.)
 
 **Read `docs/specs/2026-07-11-decidarr-v1-design.md` before non-trivial
 changes.** It is the authoritative design — reviewed three times (CTO,
@@ -47,8 +48,8 @@ engineering, UX) — and every decision below is justified there.
 5. **TV is watchable-first**: `done` = first episode of the requested
    season imported, with `landed:{ready,total}` for the rest.
 6. **Committing a pick over a pending one requires `replace=true`** (409
-   `pending_pick` otherwise) — enforced server-side in BOTH /api/watch and
-   /api/duel/win.
+   `pending_pick` otherwise) — enforced server-side in /api/watch (and
+   db.upsert_pick, its seam).
 7. **Watch-now does NOT auto-log `watched`** — the tonight card's "Mark
    watched" does (and that clears the pick + auto-inserts `seen`).
 8. **Single uvicorn worker.** SQLite + the daily refresh task assume one

@@ -184,15 +184,6 @@ export interface WatchIn {
   replace?: boolean;
 }
 
-export interface DuelWinIn {
-  player: number;
-  media_type: Stream;
-  item_key: string;
-  title: string;
-  year?: number | null;
-  tmdb_id?: number | null;
-  replace?: boolean;
-}
 
 export interface StatusQuery {
   item_key: string;

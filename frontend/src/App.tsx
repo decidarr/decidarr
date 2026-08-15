@@ -17,6 +17,7 @@ import { TopBar } from "./components/TopBar";
 import { TonightCard } from "./components/TonightCard";
 import { Board, History } from "./components/Views";
 import { S } from "./strings";
+import type { Stream } from "./types";
 import { useSession } from "./store";
 import { useIsDesktop } from "./useIsDesktop";
 
@@ -84,13 +85,25 @@ function AppShell() {
   const hasActivePool = state.pools[stream] != null;
   const currentPick = state.current_picks[stream];
 
+  // Stream and player are game context, so touching them from History,
+  // Board, or Settings also walks you back to the wheel — the top-bar
+  // chips read as links, and links should go somewhere.
+  function pickStream(s: Stream) {
+    setStream(s);
+    setView("spin");
+  }
+  function pickPlayer(id: number) {
+    setPlayer(id);
+    setView("spin");
+  }
+
   return (
     <div className="app">
       {isDesktop ? (
         <TopBar
           player={player}
           stream={stream}
-          setStream={setStream}
+          setStream={pickStream}
           view={view}
           setView={setView}
           onOpenIdentity={() => setIdentityOpen(true)}
@@ -99,7 +112,7 @@ function AppShell() {
         <Header
           player={player}
           stream={stream}
-          setStream={setStream}
+          setStream={pickStream}
           onOpenIdentity={() => setIdentityOpen(true)}
         />
       )}
@@ -198,7 +211,7 @@ function AppShell() {
         <IdentityGate
           players={state.players}
           current={playerId}
-          onSelect={setPlayer}
+          onSelect={pickPlayer}
           onClose={() => setIdentityOpen(false)}
         />
       )}

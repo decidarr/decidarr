@@ -340,6 +340,22 @@ button {
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), var(--edge-hi-soft);
     animation: popover-down var(--t-move) ease-out;
   }
+
+  /* A menu, not a gate: the big first-run tap targets shrink to rows. */
+  .sheet-overlay--identity .identity-gate__grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s1);
+  }
+
+  .sheet-overlay--identity .identity-chip {
+    flex-direction: row;
+    justify-content: flex-start;
+    min-height: 40px;
+    padding: 0 var(--s3);
+    font-size: 0.9rem;
+    border-radius: var(--r-chip);
+  }
 }
 
 @keyframes popover-down {

@@ -199,6 +199,7 @@ export function PoolsSection() {
 
   const [errors, setErrors] = useState<Record<number, string>>({});
   const [importResults, setImportResults] = useState<Record<number, string>>({});
+  const [refreshing, setRefreshing] = useState<Record<number, boolean>>({});
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ["pools"] });
@@ -207,6 +208,8 @@ export function PoolsSection() {
   }
 
   async function refresh(id: number) {
+    if (refreshing[id]) return;
+    setRefreshing((m) => ({ ...m, [id]: true }));
     try {
       const r = await withAdminPin(() => refreshPool(id));
       if (r.ok === false) {
@@ -222,6 +225,12 @@ export function PoolsSection() {
       invalidate();
     } catch {
       toast(S.common.writeFailed);
+    } finally {
+      setRefreshing((m) => {
+        const next = { ...m };
+        delete next[id];
+        return next;
+      });
     }
   }
 
@@ -287,6 +296,7 @@ export function PoolsSection() {
           plexAvailable={plexAvailable}
           errors={errors}
           importResults={importResults}
+          refreshing={refreshing}
           onRefresh={refresh}
           onActivate={activate}
           onDelete={remove}
@@ -395,7 +405,7 @@ function PoolBrowser({ pool, onBack }: { pool: PoolRow; onBack: () => void }) {
 }
 
 function PoolStreamPanel({
-  stream, pools, traktAvailable, plexAvailable, errors, importResults, onRefresh, onActivate, onDelete, onRename, onBrowse, onUpload, onCreated,
+  stream, pools, traktAvailable, plexAvailable, errors, importResults, refreshing, onRefresh, onActivate, onDelete, onRename, onBrowse, onUpload, onCreated,
 }: {
   stream: Stream;
   pools: PoolRow[];
@@ -403,6 +413,7 @@ function PoolStreamPanel({
   plexAvailable: boolean;
   errors: Record<number, string>;
   importResults: Record<number, string>;
+  refreshing: Record<number, boolean>;
   onRefresh: (id: number) => void;
   onActivate: (id: number) => void;
   onDelete: (id: number, name: string) => void;
@@ -521,7 +532,16 @@ function PoolStreamPanel({
                   <List size={14} aria-hidden="true" />
                   {S.settings.pools.viewList}
                 </button>
-                <button type="button" className="btn-secondary" onClick={() => onRefresh(p.id)}>
+                <button
+                  type="button"
+                  className={
+                    "btn-secondary" +
+                    (refreshing[p.id] ? " pool-row__refresh--busy" : "")
+                  }
+                  disabled={!!refreshing[p.id]}
+                  aria-busy={!!refreshing[p.id]}
+                  onClick={() => onRefresh(p.id)}
+                >
                   <RefreshCw size={14} aria-hidden="true" />
                   {S.settings.pools.refresh}
                 </button>
@@ -529,6 +549,22 @@ function PoolStreamPanel({
                   <button type="button" className="btn-secondary" onClick={() => onActivate(p.id)}>
                     {S.settings.pools.activate}
                   </button>
+                )}
+                {p.source === "custom" && (
+                  <label className="btn-link pool-row__upload">
+                    <Upload size={14} aria-hidden="true" />
+                    {S.settings.pools.uploadFile}
+                    <input
+                      type="file"
+                      accept=".csv,.json,.txt"
+                      className="visually-hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) onUpload(p.id, file);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
                 )}
                 {!p.active && (
                   <button
@@ -552,22 +588,6 @@ function PoolStreamPanel({
                       ? S.settings.pools.deleteArmed(p.item_count)
                       : S.settings.pools.delete}
                   </button>
-                )}
-                {p.source === "custom" && (
-                  <label className="btn-link pool-row__upload">
-                    <Upload size={14} aria-hidden="true" />
-                    {S.settings.pools.uploadFile}
-                    <input
-                      type="file"
-                      accept=".csv,.json,.txt"
-                      className="visually-hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) onUpload(p.id, file);
-                        e.target.value = "";
-                      }}
-                    />
-                  </label>
                 )}
               </div>
             </li>

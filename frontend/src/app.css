@@ -2170,17 +2170,18 @@ button {
   font-size: 0.8rem;
 }
 
-/* pools: one-line rows, chip actions right */
+/* pools: two fixed lines per row — name+meta, then actions right-aligned.
+ * Deterministic (no flex-wrap lottery), so every row matches its
+ * neighbors no matter how many chips it carries (Tim, v1.8.2). */
 .settings-view .pool-row {
   background: transparent;
   border: none;
   border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
   border-radius: 0;
   padding: var(--s2) 0;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--s2);
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s1);
 }
 
 .settings-view .pool-row:last-child {
@@ -2193,8 +2194,26 @@ button {
 }
 
 .settings-view .pool-row__actions {
-  margin: 0 0 0 auto;
+  margin: 0;
+  align-self: flex-end;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: var(--s1);
+}
+
+/* refresh feedback: arrows spin while the fetch churns */
+.pool-row__refresh--busy svg {
+  animation: refresh-spin 0.9s linear infinite;
+}
+
+@keyframes refresh-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pool-row__refresh--busy svg {
+    animation: none;
+  }
 }
 
 .settings-view .pool-row__error,

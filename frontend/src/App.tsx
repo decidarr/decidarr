@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Disc3, History as HistoryIcon, Settings as SettingsIcon, Trophy } from "lucide-react";
@@ -39,6 +39,15 @@ function AppShell() {
     enabled: !!stateQuery.data,
   });
 
+  // Solo mode: with exactly one active player, "Who's spinning?" is pure
+  // ceremony — walk straight in as them. Adding a second player in
+  // Settings brings the gate back, because then it starts meaning something.
+  const players = stateQuery.data?.players;
+  useEffect(() => {
+    if (playerId == null && players?.length === 1) setPlayer(players[0].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playerId, players]);
+
   // Decided once, the first time /api/state resolves — a fresh install with
   // no players triggers the wizard. Deliberately NOT re-derived from the
   // live player count on every render: step 1 of the wizard adds a player,
@@ -69,6 +78,11 @@ function AppShell() {
   }
 
   if (playerId == null) {
+    // The solo-mode effect above is about to select the only player —
+    // showing the gate for that one frame would just be a flash.
+    if (state.players.length === 1) {
+      return <div className="app app--centered">{S.common.loading}</div>;
+    }
     return (
       <div className="app app--centered">
         <IdentityGate players={state.players} current={playerId} onSelect={setPlayer} />

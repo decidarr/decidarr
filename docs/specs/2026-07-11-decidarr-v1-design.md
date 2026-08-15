@@ -613,4 +613,8 @@ Letterboxd/mdblist sources · multiple simultaneous pools per stream with
 per-spin pool picker · realtime multi-device duels (websockets) ·
 episode-level TV tracking ("what are we up to?") · Emby · per-player taste
 weighting · Decidarr's own API key for dashboard widgets ·
-Discord/Telegram night-summary bot · awesome-arr listing once installable.
+Discord/Telegram night-summary bot · awesome-arr listing once installable ·
+per-player seen lists + a "who's on the couch tonight?" presence picker
+(v1.9.1 decision: seen stays room-wide — the wheel picks for the room;
+personal seen only makes sense alongside presence, so they arrive together
+or not at all).

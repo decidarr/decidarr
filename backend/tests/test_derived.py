@@ -118,3 +118,32 @@ def test_history_exposes_source(db_file):
     h = db.history(conn)
     assert h[0]["source"] == "auto"
     conn.close()
+
+def test_unseen_hides_and_reseen_restores(db_file):
+    conn = db.get_conn(db_file)
+    _seed_players(conn)
+    db.log_event(conn, 1, "movie", "tmdb:603", "The Matrix", 1999, "seen")
+    db.log_event(conn, 1, "movie", "tmdb:604", "Reloaded", 2003, "seen")
+    db.log_event(conn, 1, "movie", "tmdb:603", "The Matrix", 1999, "unseen")
+    assert db.seen_keys(conn, "movie") == {"tmdb:604"}
+    # a later rewatch (or backfill) re-seens: latest event wins
+    db.log_event(conn, 1, "movie", "tmdb:603", "The Matrix", 1999, "seen")
+    assert db.seen_keys(conn, "movie") == {"tmdb:603", "tmdb:604"}
+    conn.close()
+
+def test_unseen_is_stream_scoped(db_file):
+    conn = db.get_conn(db_file)
+    _seed_players(conn)
+    db.log_event(conn, 1, "movie", "tmdb:603", "The Matrix", 1999, "seen")
+    db.log_event(conn, 1, "tv", "tmdb:603", "Same Key TV", 2020, "seen")
+    db.log_event(conn, 1, "tv", "tmdb:603", "Same Key TV", 2020, "unseen")
+    assert db.seen_keys(conn, "movie") == {"tmdb:603"}
+    assert db.seen_keys(conn, "tv") == set()
+    conn.close()
+
+def test_unseen_alone_is_not_seen(db_file):
+    conn = db.get_conn(db_file)
+    _seed_players(conn)
+    db.log_event(conn, 1, "movie", "tmdb:603", "The Matrix", 1999, "unseen")
+    assert db.seen_keys(conn, "movie") == set()
+    conn.close()

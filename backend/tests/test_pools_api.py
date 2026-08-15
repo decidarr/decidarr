@@ -145,3 +145,17 @@ def test_rename_pool_rejects_empty_and_missing(client):
     pid = _make_pool(client)
     assert client.patch(f"/api/pools/{pid}", json={"name": "   "}).status_code == 422
     assert client.patch("/api/pools/999", json={"name": "X"}).status_code == 404
+
+
+def test_pool_items_route(client):
+    pid = _make_pool(client, cfg={"items": [
+        {"tmdb_id": 603, "title": "The Matrix", "year": 1999},
+        {"tmdb_id": 604, "title": "Reloaded", "year": 2003}]})
+    client.post(f"/api/pools/{pid}/refresh")
+    r = client.get(f"/api/pools/{pid}/items")
+    assert r.status_code == 200
+    items = r.json()
+    assert [i["tmdb_id"] for i in items] == [603, 604]
+    assert items[0]["item_key"] == "tmdb:603"
+    assert isinstance(items[0]["genres"], list)
+    assert client.get("/api/pools/999/items").status_code == 404

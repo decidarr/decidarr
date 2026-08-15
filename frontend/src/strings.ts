@@ -319,6 +319,13 @@ export const S = {
       deleted: (name: string) => `${name} is gone.`,
       rename: (name: string) => `Rename ${name}`,
       renamed: (name: string) => `Renamed to ${name}.`,
+      viewList: "View list",
+      back: "← All pools",
+      searchPlaceholder: "Search titles…",
+      browserCounts: (seen: number, total: number) =>
+        `${seen} of ${total} seen`,
+      noMatches: "Nothing matches that search.",
+      markSeenFailed: "Couldn't save that — check the connection and try again.",
       importResult: (imported: number, unresolved: number) =>
         unresolved > 0
           ? `Imported ${imported}, couldn't match ${unresolved}.`

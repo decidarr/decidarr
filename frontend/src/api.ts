@@ -67,6 +67,9 @@ export const getState = () => call<StateBundle>("/state");
 export const getPool = (stream: Stream) =>
   call<PoolItem[]>(`/pool?stream=${stream}`);
 
+export const getPoolItems = (id: number) =>
+  call<PoolItem[]>(`/pools/${id}/items`);
+
 export const getStatus = (q: StatusQuery) =>
   call<StatusResult>(`/status?${toParams(q)}`);
 

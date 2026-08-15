@@ -86,3 +86,60 @@ def test_fresh_install_needs_no_migration(tmp_path, monkeypatch):
     conn.execute("INSERT INTO pools(name,media_type,source,config)"
                  " VALUES ('Lib','movie','plex','{}')")
     conn.close()
+
+
+# The events shape as v1.7 shipped it — no 'unseen' in the action CHECK.
+OLD_EVENTS_SCHEMA = """
+CREATE TABLE players(
+  id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE, emoji TEXT,
+  active INTEGER NOT NULL DEFAULT 1, plex_user TEXT, jellyfin_user TEXT
+);
+CREATE TABLE events(
+  id       INTEGER PRIMARY KEY,
+  ts       TEXT NOT NULL,
+  player   INTEGER NOT NULL REFERENCES players(id),
+  media_type TEXT NOT NULL CHECK(media_type IN ('movie','tv')),
+  item_key TEXT NOT NULL,
+  title    TEXT NOT NULL,
+  year     INTEGER,
+  action   TEXT NOT NULL CHECK(action IN
+           ('spun','vetoed','watched','seen','requested','duel_won')),
+  source   TEXT NOT NULL DEFAULT 'user' CHECK(source IN ('user','auto'))
+);
+"""
+
+
+def _make_v17_db(path):
+    conn = sqlite3.connect(path)
+    conn.executescript(OLD_EVENTS_SCHEMA)
+    conn.execute("INSERT INTO players(id,name) VALUES (1,'Tim')")
+    conn.execute("INSERT INTO events(id,ts,player,media_type,item_key,title,year,action,source)"
+                 " VALUES (42,'2026-08-01T00:00:00Z',1,'movie','tmdb:603','The Matrix',1999,'seen','auto')")
+    conn.commit()
+    conn.close()
+
+
+def test_events_migration_admits_unseen_and_preserves_rows(tmp_path, monkeypatch):
+    path = str(tmp_path / "v17.db")
+    _make_v17_db(path)
+    monkeypatch.setenv("DB_PATH", path)
+    db.init_db()
+    conn = db.get_conn(path)
+    # old row survives with id and source intact
+    row = conn.execute("SELECT * FROM events WHERE id=42").fetchone()
+    assert row["action"] == "seen" and row["source"] == "auto"
+    # and 'unseen' now inserts
+    db.log_event(conn, 1, "movie", "tmdb:603", "The Matrix", 1999, "unseen")
+    assert db.seen_keys(conn, "movie") == set()
+    conn.close()
+
+
+def test_events_migration_is_idempotent(tmp_path, monkeypatch):
+    path = str(tmp_path / "v17b.db")
+    _make_v17_db(path)
+    monkeypatch.setenv("DB_PATH", path)
+    db.init_db()
+    db.init_db()  # second boot must be a no-op
+    conn = db.get_conn(path)
+    assert conn.execute("SELECT COUNT(*) FROM events").fetchone()[0] == 1
+    conn.close()

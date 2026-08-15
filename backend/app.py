@@ -20,7 +20,7 @@ import sonarr
 from media import get_backend
 from pools import custom as custom_pool, refresh as pool_refresh, tmdb as tmdb_pool
 
-VERSION = "1.7.3"
+VERSION = "1.8.0"
 
 
 async def _daily_refresh():
@@ -206,7 +206,7 @@ class EventIn(BaseModel):
 
 @api.post("/api/event")
 def post_event(body: EventIn):
-    if body.action not in ("spun", "watched", "seen"):
+    if body.action not in ("spun", "watched", "seen", "unseen"):
         raise HTTPException(422, "action_not_allowed")
     if body.media_type not in ("movie", "tv"):
         raise HTTPException(422, "bad_media_type")
@@ -541,6 +541,25 @@ def get_pool(stream: str):
         for r in conn.execute(
                 "SELECT * FROM items WHERE pool_id=? ORDER BY rank",
                 (pool["id"],)):
+            d = dict(r)
+            d["genres"] = json.loads(d["genres"]) if d["genres"] else []
+            d["item_key"] = db.item_key(d["tmdb_id"], d["title"], d["year"])
+            items.append(d)
+    return items
+
+
+@api.get("/api/pools/{pool_id}/items")
+def get_pool_items(pool_id: int):
+    """Any pool's full list, active or not — the Back Office browser.
+    Same shape as /api/pool; reads stay ungated."""
+    with closing(db.get_conn()) as conn:
+        if not conn.execute("SELECT 1 FROM pools WHERE id=?",
+                            (pool_id,)).fetchone():
+            raise HTTPException(404, "pool_not_found")
+        items = []
+        for r in conn.execute(
+                "SELECT * FROM items WHERE pool_id=? ORDER BY rank",
+                (pool_id,)):
             d = dict(r)
             d["genres"] = json.loads(d["genres"]) if d["genres"] else []
             d["item_key"] = db.item_key(d["tmdb_id"], d["title"], d["year"])

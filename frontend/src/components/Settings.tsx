@@ -3,15 +3,17 @@
 // steps — the wizard is just an ordered path through these, not a fork.
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { Check, Pencil, Plus, RefreshCw, Trash2, Upload, UserX } from "lucide-react";
+import { Check, List, Pencil, Plus, RefreshCw, Trash2, Upload, UserX } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   ApiError, activatePool, backfillSeen, createPlayer, createPool, deactivatePlayer,
-  deletePool, getConnections, getHealth, getPlexSections, importPool, listPlayers, listPools,
-  patchPlayer, putConnections, refreshPool, renamePool, testConnection,
+  deletePool, getConnections, getHealth, getPlexSections, getPoolItems, getState,
+  importPool, listPlayers, listPools, patchPlayer, postEvent, putConnections,
+  refreshPool, renamePool, testConnection,
 } from "../api";
 import type { PoolRow } from "../api";
+import type { PoolItem } from "../types";
 import { formatWhen } from "../logic";
 import { S } from "../strings";
 import { toast } from "./Toast";
@@ -265,6 +267,13 @@ export function PoolsSection() {
   }
 
   const pools = poolsQuery.data ?? [];
+  const [browsing, setBrowsing] = useState<PoolRow | null>(null);
+
+  if (browsing) {
+    return (
+      <PoolBrowser pool={browsing} onBack={() => setBrowsing(null)} />
+    );
+  }
 
   return (
     <section className="settings-section">
@@ -282,6 +291,7 @@ export function PoolsSection() {
           onActivate={activate}
           onDelete={remove}
           onRename={rename}
+          onBrowse={setBrowsing}
           onUpload={upload}
           onCreated={invalidate}
         />
@@ -290,8 +300,102 @@ export function PoolsSection() {
   );
 }
 
+/** The pool's full list with room-wide seen check-offs. Checking posts a
+ * 'seen' event as the signed-in player; un-checking posts 'unseen' (the
+ * latest event wins server-side). Game actions — never PIN-gated. */
+function PoolBrowser({ pool, onBack }: { pool: PoolRow; onBack: () => void }) {
+  const { playerId } = useSession();
+  const queryClient = useQueryClient();
+  const itemsQuery = useQuery({
+    queryKey: ["pool-items", pool.id],
+    queryFn: () => getPoolItems(pool.id),
+  });
+  const stateQuery = useQuery({ queryKey: ["state"], queryFn: getState });
+  const [search, setSearch] = useState("");
+  // Optimistic overrides layered over the server's seen set; the state
+  // refetch after each toggle agrees with them, so they never go stale.
+  const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+
+  const items = itemsQuery.data ?? [];
+  const seenSet = new Set(stateQuery.data?.seen?.[pool.media_type] ?? []);
+  const isSeen = (key: string) => overrides[key] ?? seenSet.has(key);
+  const needle = search.trim().toLowerCase();
+  const shown = needle
+    ? items.filter((it) => it.title.toLowerCase().includes(needle))
+    : items;
+  const seenCount = items.filter((it) => isSeen(it.item_key)).length;
+
+  async function toggle(it: PoolItem) {
+    if (playerId == null) return;
+    const next = !isSeen(it.item_key);
+    setOverrides((o) => ({ ...o, [it.item_key]: next }));
+    try {
+      await postEvent({
+        player: playerId,
+        media_type: pool.media_type,
+        item_key: it.item_key,
+        title: it.title,
+        year: it.year,
+        action: next ? "seen" : "unseen",
+      });
+      queryClient.invalidateQueries({ queryKey: ["state"] });
+    } catch {
+      setOverrides((o) => ({ ...o, [it.item_key]: !next }));
+      toast(S.settings.pools.markSeenFailed);
+    }
+  }
+
+  return (
+    <section className="settings-section">
+      <button type="button" className="btn-link pool-browser__back" onClick={onBack}>
+        {S.settings.pools.back}
+      </button>
+      <div className="pool-browser__head">
+        <h3 className="settings-section__title">{pool.name}</h3>
+        <span className="pool-row__meta">
+          {S.settings.pools.browserCounts(seenCount, items.length)}
+        </span>
+      </div>
+      <input
+        className="decade-select pool-browser__search"
+        placeholder={S.settings.pools.searchPlaceholder}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+      {shown.length === 0 ? (
+        <p className="settings-empty">
+          {items.length === 0 ? S.settings.pools.noneYet : S.settings.pools.noMatches}
+        </p>
+      ) : (
+        <ul className="settings-list pool-browser__list">
+          {shown.map((it) => (
+            <li key={it.item_key} className="pool-browser__row">
+              <label className="pool-browser__label">
+                <input
+                  type="checkbox"
+                  checked={isSeen(it.item_key)}
+                  onChange={() => toggle(it)}
+                />
+                <span className="pool-browser__title">
+                  {it.title}
+                  {it.year != null && (
+                    <span className="pool-browser__year"> ({it.year})</span>
+                  )}
+                </span>
+                {it.runtime != null && (
+                  <span className="pool-row__meta">{it.runtime}m</span>
+                )}
+              </label>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function PoolStreamPanel({
-  stream, pools, traktAvailable, plexAvailable, errors, importResults, onRefresh, onActivate, onDelete, onRename, onUpload, onCreated,
+  stream, pools, traktAvailable, plexAvailable, errors, importResults, onRefresh, onActivate, onDelete, onRename, onBrowse, onUpload, onCreated,
 }: {
   stream: Stream;
   pools: PoolRow[];
@@ -303,6 +407,7 @@ function PoolStreamPanel({
   onActivate: (id: number) => void;
   onDelete: (id: number, name: string) => void;
   onRename: (id: number, name: string) => void;
+  onBrowse: (pool: PoolRow) => void;
   onUpload: (id: number, file: File) => void;
   onCreated: () => void;
 }) {
@@ -412,6 +517,10 @@ function PoolStreamPanel({
               )}
               {importResults[p.id] && <p className="pool-row__note">{importResults[p.id]}</p>}
               <div className="pool-row__actions">
+                <button type="button" className="btn-secondary" onClick={() => onBrowse(p)}>
+                  <List size={14} aria-hidden="true" />
+                  {S.settings.pools.viewList}
+                </button>
                 <button type="button" className="btn-secondary" onClick={() => onRefresh(p.id)}>
                   <RefreshCw size={14} aria-hidden="true" />
                   {S.settings.pools.refresh}

@@ -2238,6 +2238,62 @@ button {
   flex: 0 0 auto;
 }
 
+/* pool browser: the full list with seen check-offs */
+.pool-browser__back {
+  align-self: flex-start;
+  text-align: left;
+}
+
+.pool-browser__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+}
+
+.settings-view .pool-browser__search {
+  max-width: 320px;
+}
+
+.settings-view .pool-browser__list {
+  margin: 0;
+}
+
+.pool-browser__row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 38px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+}
+
+.pool-browser__row:last-child {
+  border-bottom: none;
+}
+
+.pool-browser__label {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 38px;
+  cursor: pointer;
+}
+
+.pool-browser__label input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+}
+
+.pool-browser__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pool-browser__year {
+  color: var(--dim);
+}
+
 /* pool rename: pencil beside the name, input swaps in place */
 .pool-row__edit {
   color: var(--dim);

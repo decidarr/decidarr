@@ -163,7 +163,7 @@ export interface EventIn {
   item_key: string;
   title: string;
   year?: number | null;
-  action: "spun" | "watched" | "seen";
+  action: "spun" | "watched" | "seen" | "unseen";
 }
 
 export interface VetoIn {

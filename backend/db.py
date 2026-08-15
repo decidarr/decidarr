@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS events(
   title    TEXT NOT NULL,
   year     INTEGER,
   action   TEXT NOT NULL CHECK(action IN
-           ('spun','vetoed','watched','seen','requested','duel_won')),
+           ('spun','vetoed','watched','seen','unseen','requested','duel_won')),
   source   TEXT NOT NULL DEFAULT 'user' CHECK(source IN ('user','auto'))
 );
 CREATE TABLE IF NOT EXISTS current_picks(
@@ -115,11 +115,54 @@ def _migrate_pools_source(conn) -> None:
         conn.execute("PRAGMA foreign_keys=ON")
 
 
+def _migrate_events_actions(conn) -> None:
+    """v1.8: widen events.action's CHECK to admit 'unseen' (the pool
+    browser's un-check). Same discipline as _migrate_pools_source:
+    guarded, transactional, row-count-asserted, ids copied verbatim —
+    seen_keys' latest-wins ordering rides on those ids."""
+    sql = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='events'"
+    ).fetchone()
+    if sql is None or "'unseen'" in sql["sql"]:
+        return
+    before = conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+    conn.execute("PRAGMA foreign_keys=OFF")
+    try:
+        conn.executescript("""
+        BEGIN;
+        CREATE TABLE events_new(
+          id       INTEGER PRIMARY KEY,
+          ts       TEXT NOT NULL,
+          player   INTEGER NOT NULL REFERENCES players(id),
+          media_type TEXT NOT NULL CHECK(media_type IN ('movie','tv')),
+          item_key TEXT NOT NULL,
+          title    TEXT NOT NULL,
+          year     INTEGER,
+          action   TEXT NOT NULL CHECK(action IN
+                   ('spun','vetoed','watched','seen','unseen','requested','duel_won')),
+          source   TEXT NOT NULL DEFAULT 'user' CHECK(source IN ('user','auto'))
+        );
+        INSERT INTO events_new
+          SELECT id, ts, player, media_type, item_key, title, year, action, source
+          FROM events;
+        DROP TABLE events;
+        ALTER TABLE events_new RENAME TO events;
+        COMMIT;
+        """)
+        after = conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+        if after != before:
+            raise RuntimeError(
+                f"events migration lost rows ({before} -> {after})")
+    finally:
+        conn.execute("PRAGMA foreign_keys=ON")
+
+
 def init_db(path: str | None = None) -> None:
     with closing(get_conn(path)) as conn:
         # Migration first: on an old DB the rebuild happens before the
         # IF NOT EXISTS statements no-op; on a fresh DB the guard returns.
         _migrate_pools_source(conn)
+        _migrate_events_actions(conn)
         conn.executescript(SCHEMA)
         conn.commit()
 
@@ -167,10 +210,17 @@ def log_event(conn, player, media_type, item_key, title, year, action,
 
 
 def seen_keys(conn, media_type):
+    # Latest seen/unseen event wins per item (v1.8): an un-check hides a
+    # mis-tap, and any later 'seen' (rewatch, backfill) re-seens. Event id
+    # is the tiebreak — append-only, so id order IS time order.
     rows = conn.execute(
-        "SELECT DISTINCT item_key FROM events"
-        " WHERE action='seen' AND media_type=?", (media_type,))
-    return {r["item_key"] for r in rows}
+        "SELECT item_key, action FROM events"
+        " WHERE media_type=? AND action IN ('seen','unseen')"
+        " ORDER BY id", (media_type,))
+    latest = {}
+    for r in rows:
+        latest[r["item_key"]] = r["action"]
+    return {k for k, a in latest.items() if a == "seen"}
 
 
 def history(conn, limit=50):

@@ -76,3 +76,14 @@ def test_reset_seen_no_stream_clears_both(client):
     assert r.status_code == 200 and r.json()["deleted"] == 2
     seen = client.get("/api/state").json()["seen"]
     assert seen["movie"] == [] and seen["tv"] == []
+
+def test_unseen_event_accepted_and_gibberish_still_rejected(client):
+    client.post("/api/players", json={"name": "Tim"})
+    ok = client.post("/api/event", json={
+        "player": 1, "media_type": "movie", "item_key": "tmdb:603",
+        "title": "The Matrix", "year": 1999, "action": "unseen"})
+    assert ok.status_code == 200
+    bad = client.post("/api/event", json={
+        "player": 1, "media_type": "movie", "item_key": "tmdb:603",
+        "title": "The Matrix", "year": 1999, "action": "definitely_not"})
+    assert bad.status_code == 422

@@ -499,10 +499,7 @@ button {
 .zen-strip__filters {
   font-size: 0.75rem;
   padding: 0 var(--s2);
-  min-height: 44px;
 }
-
-
 
 .zen-strip__spin {
   flex: 0 0 auto;
@@ -511,8 +508,18 @@ button {
 }
 
 .zen-strip__duel {
-  min-height: 56px;
   padding: 0 var(--s3);
+}
+
+/* One Height (v1.7.3): every strip control stands 44px on one shared
+ * baseline — selects, Filters, Spin, Duel. Compounds outrank the taller
+ * base .spin-button/.duel-button/.btn-secondary rules defined later. */
+.zen-strip .zen-strip__select,
+.zen-strip .zen-strip__filters,
+.zen-strip .zen-strip__spin,
+.zen-strip .zen-strip__duel {
+  height: 44px;
+  min-height: 44px;
 }
 
 .stage__replacing {

@@ -198,7 +198,10 @@ export const S = {
     action: {
       watched: "Watched",
       requested: "Requested",
+      vetoed: "Vetoed",
     },
+    grudgesCaption:
+      "Titles vetoed twice or more. The wheel forgives — the list doesn't.",
     grudgeCount: (n: number) => `Vetoed ${n} time${n === 1 ? "" : "s"}`,
     autoTag: "auto",
   },

@@ -65,15 +65,19 @@ def test_vetoes_used_today_falls_back_to_utc_on_bad_tz(db_file):
     assert db.vetoes_used_today(conn, 1, "Not/AZone") == 1
     conn.close()
 
-def test_history_newest_first_watched_and_requested_only(db_file):
+def test_history_newest_first_watched_requested_vetoed_not_spun(db_file):
     conn = db.get_conn(db_file)
     _seed_players(conn)
     db.log_event(conn, 1, "movie", "tmdb:1", "First", None, "requested")
     db.log_event(conn, 1, "movie", "tmdb:2", "Second", None, "spun")
     db.log_event(conn, 2, "tv", "tmdb:3", "Third", None, "watched")
+    db.log_event(conn, 1, "movie", "tmdb:4", "Fourth", None, "vetoed")
     h = db.history(conn)
-    assert [e["title"] for e in h] == ["Third", "First"]
-    assert h[0]["player_name"] == "Sam"
+    # vetoed now surfaces in history; spun (and the watched->seen companion)
+    # stay out. Newest-first by insertion.
+    assert [e["title"] for e in h] == ["Fourth", "Third", "First"]
+    assert h[0]["action"] == "vetoed"
+    assert h[1]["player_name"] == "Sam"
     conn.close()
 
 def test_stats_counts_duel_won_per_stream_and_combined(db_file):

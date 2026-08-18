@@ -109,7 +109,7 @@ export interface HistoryEntry {
   item_key: string;
   title: string;
   year: number | null;
-  action: "watched" | "requested";
+  action: "watched" | "requested" | "vetoed";
   source: "user" | "auto";
 }
 

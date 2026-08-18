@@ -2,7 +2,7 @@
 // scoreboard with computed flavor titles).
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { ChevronDown, ChevronRight, Zap } from "lucide-react";
+import { Ban, ChevronDown, ChevronRight, Zap } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
 import { getStats } from "../api";
@@ -41,7 +41,16 @@ export function History({ history, grudges }: HistoryProps) {
               <li key={`${h.ts}-${h.item_key}-${i}`} className="history-list__row">
                 <span className="history-list__title">{h.title}</span>
                 <span className="history-list__meta">
-                  {h.player_name} · {S.history.action[h.action]} · {formatWhen(h.ts)}
+                  {h.player_name} ·{" "}
+                  {h.action === "vetoed" ? (
+                    <span className="history-list__veto">
+                      <Ban size={12} aria-hidden="true" />
+                      {S.history.action.vetoed}
+                    </span>
+                  ) : (
+                    S.history.action[h.action]
+                  )}{" "}
+                  · {formatWhen(h.ts)}
                   {h.source === "auto" && (
                     <span className="history__auto">
                       <Zap size={12} aria-hidden="true" />
@@ -60,6 +69,7 @@ export function History({ history, grudges }: HistoryProps) {
         open={grudgesOpen}
         onToggle={() => setGrudgesOpen((o) => !o)}
       >
+        <p className="history-list__caption">{S.history.grudgesCaption}</p>
         {filteredGrudges.length === 0 ? (
           <p className="settings-empty">{S.history.grudgesEmpty}</p>
         ) : (

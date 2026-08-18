@@ -228,7 +228,7 @@ def history(conn, limit=50):
         "SELECT e.ts, e.player, p.name AS player_name, e.media_type,"
         "       e.item_key, e.title, e.year, e.action, e.source"
         " FROM events e JOIN players p ON p.id = e.player"
-        " WHERE e.action IN ('watched','requested')"
+        " WHERE e.action IN ('watched','requested','vetoed')"
         " ORDER BY e.id DESC LIMIT ?", (limit,))
     return [dict(r) for r in rows]
 

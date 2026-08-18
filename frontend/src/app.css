@@ -1923,16 +1923,23 @@ button {
   display: none;
 }
 
-/* update awareness (v1.10): quiet gold notices, never a nag */
+/* update awareness (v1.10; badge form v1.11.1 — Tim wanted it to read
+ * as a badge under the version, not a text link) */
 .settings-rail__update {
-  display: block;
-  margin-top: 2px;
+  display: inline-block;
+  margin-top: var(--s2);
+  padding: 3px 10px;
+  border: 1px solid var(--gold);
+  border-radius: 999px;
   color: var(--gold);
   text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.65rem;
 }
 
 .settings-rail__update:hover {
-  text-decoration: underline;
+  background: rgba(212, 169, 67, 0.12);
 }
 
 .top-bar__nav-item,

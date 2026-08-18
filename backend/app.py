@@ -21,7 +21,7 @@ import updates
 from media import get_backend
 from pools import custom as custom_pool, refresh as pool_refresh, tmdb as tmdb_pool
 
-VERSION = "1.11.2"
+VERSION = "1.11.3"
 
 
 async def _daily_refresh():
@@ -711,23 +711,31 @@ TEST_PROBES = {
 }
 
 
+class TestIn(BaseModel):
+    """Unsaved form drafts to probe with. Test tests what's in the boxes:
+    drafts overlay saved/env values for this request only — nothing
+    persists until Save."""
+    overrides: dict[str, str] = {}
+
+
 @api.post("/api/connections/{service}/test",
           dependencies=[Depends(require_admin)])
-async def test_connection(service: str):
+async def test_connection(service: str, body: TestIn | None = None):
     import importlib
     if service not in TEST_PROBES:
         raise HTTPException(404, "unknown_service")
     mod_name, path = TEST_PROBES[service]
     mod = importlib.import_module(mod_name)
     try:
-        async with mod.make_client() as c:
-            r = await c.get(path)
-            r.raise_for_status()
-            if service == "plex":
-                machine = (r.json().get("MediaContainer") or {}) \
-                    .get("machineIdentifier")
-                if machine:
-                    config.set_setting("plex_machine_id", machine)
+        with config.overriding(body.overrides if body else {}):
+            async with mod.make_client() as c:
+                r = await c.get(path)
+                r.raise_for_status()
+                if service == "plex":
+                    machine = (r.json().get("MediaContainer") or {}) \
+                        .get("machineIdentifier")
+                    if machine:
+                        config.set_setting("plex_machine_id", machine)
     except Exception as e:
         return {"ok": False, "message": str(e)}
     return {"ok": True, "message": "Connection successful"}

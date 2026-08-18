@@ -205,7 +205,10 @@ export const putConnections = (body: Record<string, string>) =>
     body: JSON.stringify(body),
   });
 
-export const testConnection = (service: string) =>
+/** `overrides` carries unsaved form drafts — Test tests what's in the
+ * boxes, overlaid on saved values server-side, persisting nothing. */
+export const testConnection = (service: string, overrides?: Record<string, string>) =>
   call<{ ok: boolean; message: string }>(`/connections/${service}/test`, {
     method: "POST",
+    body: JSON.stringify({ overrides: overrides ?? {} }),
   });

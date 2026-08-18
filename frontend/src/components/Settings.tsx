@@ -791,8 +791,14 @@ export function ConnectionsSection() {
 
   async function test(svc: ServiceDef) {
     setTestResults((s) => ({ ...s, [svc.service]: "testing" }));
+    // Send any unsaved edits for this service's fields, so Test probes
+    // what's typed — no more save-before-you-can-test (Tim, v1.11.3).
+    const overrides: Record<string, string> = {};
+    for (const f of svc.fields) {
+      if (drafts[f.key] !== undefined) overrides[f.key] = drafts[f.key];
+    }
     try {
-      const r = await withAdminPin(() => testConnection(svc.service));
+      const r = await withAdminPin(() => testConnection(svc.service, overrides));
       setTestResults((s) => ({ ...s, [svc.service]: r }));
     } catch (e) {
       // withAdminPin surfaces PIN outcomes as internal tokens, not

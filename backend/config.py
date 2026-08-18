@@ -1,5 +1,6 @@
+import contextvars
 import os
-from contextlib import closing
+from contextlib import closing, contextmanager
 
 import db
 
@@ -41,7 +42,28 @@ def set_setting(key: str, value: str) -> None:
         conn.commit()
 
 
+# Request-scoped resolution overlay (v1.11.3): lets the connection-test
+# route probe UNSAVED form drafts without persisting them. Contextvar so
+# the overlay is confined to the task that set it — nothing else in this
+# single-worker app ever sees it.
+_overrides: contextvars.ContextVar[dict[str, str]] = \
+    contextvars.ContextVar("config_overrides", default={})
+
+
+@contextmanager
+def overriding(values: dict[str, str]):
+    token = _overrides.set({k: v for k, v in values.items()
+                            if k in SETTING_ENV and v})
+    try:
+        yield
+    finally:
+        _overrides.reset(token)
+
+
 def resolve(key: str) -> str | None:
+    overlay = _overrides.get()
+    if key in overlay:
+        return overlay[key]
     if is_env_set(key):
         return os.environ[SETTING_ENV[key]]
     return get_setting(key)

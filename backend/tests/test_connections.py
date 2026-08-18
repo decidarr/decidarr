@@ -90,3 +90,47 @@ def test_failed_test_is_ok_false_not_500(client, monkeypatch):
         transport=httpx.MockTransport(handler), base_url="http://s:5055"))
     r = client.post("/api/connections/seerr/test")
     assert r.status_code == 200 and r.json()["ok"] is False
+
+
+# --- v1.11.3: Test probes the DRAFTS, not just what's saved ---------------
+
+def test_overrides_reach_resolution_during_test(client, monkeypatch):
+    """Unsaved form values sent as overrides must be what make_client
+    resolves — Test tests what's in the boxes."""
+    import seerr
+    resolved = {}
+
+    def fake_make_client():
+        resolved["url"] = config.resolve("seerr_url")
+        resolved["key"] = config.resolve("seerr_api_key")
+        def handler(req):
+            return httpx.Response(200, json={})
+        return httpx.AsyncClient(transport=httpx.MockTransport(handler),
+                                 base_url="http://draft:5055")
+
+    monkeypatch.setattr(seerr, "make_client", fake_make_client)
+    r = client.post("/api/connections/seerr/test", json={
+        "overrides": {"seerr_url": "http://draft:5055",
+                      "seerr_api_key": "draft-key"}})
+    assert r.json()["ok"] is True
+    assert resolved == {"url": "http://draft:5055", "key": "draft-key"}
+
+
+def test_overrides_never_persist(client, monkeypatch):
+    import seerr
+    monkeypatch.setattr(seerr, "make_client", lambda: httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda req: httpx.Response(200, json={})),
+        base_url="http://draft:5055"))
+    client.post("/api/connections/seerr/test", json={
+        "overrides": {"seerr_url": "http://draft:5055",
+                      "seerr_api_key": "draft-key"}})
+    assert config.get_setting("seerr_url") is None
+    assert config.resolve("seerr_url") is None  # overlay gone after the request
+
+
+def test_overrides_unknown_keys_ignored(client):
+    r = client.post("/api/connections/seerr/test", json={
+        "overrides": {"not_a_setting": "x"}})
+    # falls through to the unconfigured path, not a 500/422
+    assert r.status_code == 200
+    assert r.json()["ok"] is False

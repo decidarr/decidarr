@@ -17,6 +17,27 @@ phone's home screen).
 Decidarr is the public evolution of Swamp Roulette, a private two-player picker
 already running happily in production.
 
+<p align="center"><img src="assets/screenshots/hero-fan.png" alt="The spin stage: a fan of posters over 'Tonight, we watch', with the pool switcher, runtime preset, filters, and the Spin button" width="800"/></p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="assets/screenshots/pick-library.png" alt="A landed pick that's already in your library: poster, year and runtime, 'In your library' badge, and a Let's Watch button"/></td>
+    <td width="50%"><img src="assets/screenshots/pick-summon.png" alt="A landed pick you don't own yet: one Summon button requests it through Overseerr/Jellyseerr"/></td>
+  </tr>
+  <tr>
+    <td align="center"><em>Landed on something you own → watch it.</em></td>
+    <td align="center"><em>Landed on something you don't → summon it.</em></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/screenshots/tonight-progress.png" alt="Tonight's pick with a live download progress bar and ETA fed by Radarr"/></td>
+    <td width="50%"><img src="assets/screenshots/back-office.png" alt="Settings: the pools section with Plex-library and custom list pools, rename, view list, refresh, and delete"/></td>
+  </tr>
+  <tr>
+    <td align="center"><em>…and watch it arrive, live from Radarr/Sonarr.</em></td>
+    <td align="center"><em>Pools come from Plex libraries, TMDB/Trakt lists, or your own CSV.</em></td>
+  </tr>
+</table>
+
 ## What makes it different
 
 Existing pickers choose from what your media server already has. Decidarr

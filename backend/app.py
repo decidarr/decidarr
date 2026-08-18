@@ -21,7 +21,7 @@ import updates
 from media import get_backend
 from pools import custom as custom_pool, refresh as pool_refresh, tmdb as tmdb_pool
 
-VERSION = "1.10.0"
+VERSION = "1.11.0"
 
 
 async def _daily_refresh():
@@ -496,14 +496,19 @@ async def import_pool(pool_id: int = Form(...), file: UploadFile = File(...)):
                                      await file.read())
         except ValueError:
             raise HTTPException(422, "bad_format")
-        unresolved = []
+        # Bounded-concurrency resolution (launch prep): a 300-row upload
+        # used to crawl one TMDB search at a time and read as hung.
         async with tmdb_pool.make_client() as client:
-            for r in rows:
-                if not r.get("tmdb_id"):
+            sem = asyncio.Semaphore(10)
+
+            async def resolve(r):
+                async with sem:
                     r["tmdb_id"] = await tmdb_pool.search(
                         client, r["title"], r.get("year"), pool["media_type"])
-                    if not r["tmdb_id"]:
-                        unresolved.append(r["title"])
+
+            await asyncio.gather(
+                *(resolve(r) for r in rows if not r.get("tmdb_id")))
+        unresolved = [r["title"] for r in rows if not r.get("tmdb_id")]
         # dedupe NULL-tmdb rows on normalized (title, year) — UNIQUE won't
         seen_keys_, deduped = set(), []
         for r in rows:

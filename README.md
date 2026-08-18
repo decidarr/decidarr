@@ -9,10 +9,10 @@ your library yet, one tap summons it through Overseerr/Jellyseerr and
 Radarr/Sonarr, with a live download progress bar until it lands.
 
 Decidarr runs two independent streams — **Movies** and **TV** — each with its
-own curated pool and its own wheel. Veto tokens, head-to-head duels, blind
-picks, a grudge list, and a scoreboard turn choosing into a game instead of an
-argument. Self-hosted, single Docker container, mobile-first PWA (installable
-to your phone's home screen).
+own curated pool and its own wheel. Veto tokens, blind picks, a grudge list,
+and a scoreboard turn choosing into a game instead of an argument.
+Self-hosted, single Docker container, mobile-first PWA (installable to your
+phone's home screen).
 
 Decidarr is the public evolution of Swamp Roulette, a private two-player picker
 already running happily in production.
@@ -69,8 +69,13 @@ define everything in `compose.yaml` and never open the UI.
 | `JELLYFIN_URL` / `JELLYFIN_API_KEY` | when `MEDIA_SERVER=jellyfin` | Jellyfin connection. |
 | `TMDB_API_KEY` | **yes** | Pool enrichment (posters, genres, runtime, year) for every pool source. Free key at [themoviedb.org](https://www.themoviedb.org/settings/api). |
 | `TRAKT_CLIENT_ID` | no | Enables the Trakt list pool source. |
-| `AUTOLOG_ENABLED` | no | Auto-log watches from media-server playback (default on when `MEDIA_SERVER` is set). `false` disables. |
+| `AUTOLOG_ENABLED` | no | Auto-log watches from media-server playback (default on when `MEDIA_SERVER` is set; works with Plex and Jellyfin). `false` disables. |
 | `AUTOLOG_INTERVAL` | no | Auto-log poll cadence in seconds. Default `300`. |
+| `UPDATE_CHECK` | no | Once a day, ask Docker Hub whether a newer image exists and show a quiet notice in Settings. `false` disables the check entirely. |
+
+One current asymmetry: the one-tap **"Import watched from Plex"** history
+backfill is Plex-only today. Jellyfin users get everything else, including
+auto-log.
 
 See `compose.yaml` in this repo for a fully commented example with every
 variable present.
@@ -88,6 +93,23 @@ missing or unreachable — each row below degrades independently:
 | `MEDIA_SERVER` credentials | Verdicts fall back to Overseerr's availability signal; no deep links. |
 | `TRAKT_CLIENT_ID` | Trakt source hidden in the pool picker. |
 | `TMDB_API_KEY` | Pool features are blocked at startup; `/api/health` flags it. |
+
+## Exposure, security & backups
+
+Decidarr is designed for a **trusted home network**. Game actions (spin,
+veto, marking things seen) are deliberately open — nobody wants to log in
+on movie night — while every settings write can be gated behind an
+**admin PIN** (set one in Settings). There is no user authentication
+beyond that, so if you expose Decidarr to the internet, put real auth in
+front of it (a reverse proxy with basic auth, Authelia, Tailscale, etc.)
+— the same guidance as the rest of the \*arr stack.
+
+The container currently runs as root, the common default for simple
+single-container apps; file access is limited to the `/data` mount.
+
+**Backups:** everything Decidarr knows — players, pools, picks, and the
+entire watch history — is one SQLite file at `/data/decidarr.db`. Back up
+the `/data` volume and you have backed up Decidarr.
 
 ## Architecture
 

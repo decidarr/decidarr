@@ -234,6 +234,7 @@ export function PoolsSection() {
   const [errors, setErrors] = useState<Record<number, string>>({});
   const [importResults, setImportResults] = useState<Record<number, string>>({});
   const [refreshing, setRefreshing] = useState<Record<number, boolean>>({});
+  const [uploading, setUploading] = useState<Record<number, boolean>>({});
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ["pools"] });
@@ -298,6 +299,8 @@ export function PoolsSection() {
   }
 
   async function upload(id: number, file: File) {
+    if (uploading[id]) return;
+    setUploading((m) => ({ ...m, [id]: true }));
     try {
       const r = await withAdminPin(() => importPool(id, file));
       setImportResults((s) => ({
@@ -306,6 +309,12 @@ export function PoolsSection() {
       invalidate();
     } catch {
       toast(S.common.writeFailed);
+    } finally {
+      setUploading((m) => {
+        const next = { ...m };
+        delete next[id];
+        return next;
+      });
     }
   }
 
@@ -331,6 +340,7 @@ export function PoolsSection() {
           errors={errors}
           importResults={importResults}
           refreshing={refreshing}
+          uploading={uploading}
           onRefresh={refresh}
           onActivate={activate}
           onDelete={remove}
@@ -439,7 +449,7 @@ function PoolBrowser({ pool, onBack }: { pool: PoolRow; onBack: () => void }) {
 }
 
 function PoolStreamPanel({
-  stream, pools, traktAvailable, plexAvailable, errors, importResults, refreshing, onRefresh, onActivate, onDelete, onRename, onBrowse, onUpload, onCreated,
+  stream, pools, traktAvailable, plexAvailable, errors, importResults, refreshing, uploading, onRefresh, onActivate, onDelete, onRename, onBrowse, onUpload, onCreated,
 }: {
   stream: Stream;
   pools: PoolRow[];
@@ -448,6 +458,7 @@ function PoolStreamPanel({
   errors: Record<number, string>;
   importResults: Record<number, string>;
   refreshing: Record<number, boolean>;
+  uploading: Record<number, boolean>;
   onRefresh: (id: number) => void;
   onActivate: (id: number) => void;
   onDelete: (id: number, name: string) => void;
@@ -585,13 +596,22 @@ function PoolStreamPanel({
                   </button>
                 )}
                 {p.source === "custom" && (
-                  <label className="btn-link pool-row__upload">
+                  <label
+                    className={
+                      "btn-link pool-row__upload" +
+                      (uploading[p.id] ? " pool-row__upload--busy" : "")
+                    }
+                    aria-busy={!!uploading[p.id]}
+                  >
                     <Upload size={14} aria-hidden="true" />
-                    {S.settings.pools.uploadFile}
+                    {uploading[p.id]
+                      ? S.settings.pools.importing
+                      : S.settings.pools.uploadFile}
                     <input
                       type="file"
                       accept=".csv,.json,.txt"
                       className="visually-hidden"
+                      disabled={!!uploading[p.id]}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) onUpload(p.id, file);

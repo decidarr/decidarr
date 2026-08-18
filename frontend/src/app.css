@@ -2240,3 +2240,9 @@ button {
   width: auto;
   flex: 0 1 200px;
 }
+
+/* upload busy (v1.11): the label goes quiet while the import resolves */
+.pool-row__upload--busy {
+  opacity: 0.55;
+  pointer-events: none;
+}

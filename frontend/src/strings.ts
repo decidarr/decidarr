@@ -293,6 +293,7 @@ export const S = {
       plexNoSections: "No matching Plex sections found. Check the Plex connection.",
       listId: "List ID",
       uploadFile: "Upload list",
+      importing: "Importing…",
       create: "Create pool",
       refresh: "Refresh",
       activate: "Activate",

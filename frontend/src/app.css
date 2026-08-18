@@ -675,6 +675,20 @@ button {
   align-items: center;
 }
 
+/* The rail belongs to the container, not the inputs. Two inputs are stacked
+   here, and the upper one's own track is an opaque bar the full width of the
+   row — it would paint straight through the lower one's thumb, slicing the
+   min dot in half. One rail underneath both, and the dots stay whole. */
+.range-dual::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+}
+
 .range-dual__input {
   position: absolute;
   left: 0;
@@ -716,17 +730,19 @@ button {
   cursor: pointer;
 }
 
+/* Height stays 4px — the thumb's margin-top above is measured against it —
+   but the fill is the container's job now. */
 .range-dual__input::-webkit-slider-runnable-track {
   height: 4px;
-  background: var(--line);
+  background: transparent;
   border-radius: 2px;
 }
 
-/* Firefox centres its thumb automatically, but its track needs styling too
-   or the rail falls back to the platform default. */
+/* Firefox centres its thumb automatically, but its track still needs
+   flattening or the platform default paints its own bar over the dots. */
 .range-dual__input::-moz-range-track {
   height: 4px;
-  background: var(--line);
+  background: transparent;
   border-radius: 2px;
 }
 

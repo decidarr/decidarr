@@ -21,7 +21,7 @@ import updates
 from media import get_backend
 from pools import custom as custom_pool, refresh as pool_refresh, tmdb as tmdb_pool
 
-VERSION = "1.11.4"
+VERSION = "1.12.0"
 
 
 async def _daily_refresh():

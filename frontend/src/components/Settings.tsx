@@ -19,6 +19,7 @@ import { S } from "../strings";
 import { toast } from "./Toast";
 import { pinAwareMessage, withAdminPin } from "./AdminPin";
 import { useSession } from "../store";
+import { useUnsaved } from "../unsaved";
 import type { ConnectionsBundle, Player, Stream } from "../types";
 
 export function isActive(p: Player): boolean {
@@ -769,6 +770,43 @@ export function ConnectionsSection() {
     return data?.[key]?.value ?? "";
   }
 
+  // Navigation guard (v1.12): register dirtiness + a save-everything
+  // handler so leaving this section can offer Save / Discard / Stay
+  // instead of silently dropping edits. A draft equal to the saved value
+  // doesn't count as dirty.
+  const dirtyEntries = Object.entries(drafts).filter(
+    ([k, v]) => v !== (data?.[k]?.value ?? ""));
+  const isDirty = dirtyEntries.length > 0;
+  useEffect(() => {
+    const saveAll = async (): Promise<boolean> => {
+      try {
+        await withAdminPin(() =>
+          putConnections(Object.fromEntries(dirtyEntries)));
+        toast(S.settings.connections.saved);
+        setDrafts({});
+        queryClient.invalidateQueries({ queryKey: ["connections"] });
+        queryClient.invalidateQueries({ queryKey: ["health"] });
+        return true;
+      } catch {
+        toast(S.common.writeFailed);
+        return false;
+      }
+    };
+    useUnsaved.getState().setGuard(isDirty, isDirty ? saveAll : null);
+    return () => useUnsaved.getState().clearGuard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(dirtyEntries)]);
+
+  // The one exit no in-app guard can catch: closing/reloading the tab.
+  useEffect(() => {
+    if (!isDirty) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [isDirty]);
+
   async function save(svc: ServiceDef) {
     const body: Record<string, string> = {};
     for (const f of svc.fields) {
@@ -1015,7 +1053,7 @@ export function Settings() {
                   (section === s.key ? " settings-rail__link--active" : "")
                 }
                 aria-current={section === s.key ? "true" : undefined}
-                onClick={() => setSection(s.key)}
+                onClick={() => useUnsaved.getState().requestNav(() => setSection(s.key))}
               >
                 {s.label}
               </button>

@@ -14,10 +14,12 @@ import { Stage } from "./components/Stage";
 import { Toast } from "./components/Toast";
 import { TopBar } from "./components/TopBar";
 import { TonightCard } from "./components/TonightCard";
+import { UnsavedSheet } from "./components/UnsavedSheet";
 import { Board, History } from "./components/Views";
 import { S } from "./strings";
 import type { Stream } from "./types";
 import { useSession } from "./store";
+import { useUnsaved } from "./unsaved";
 import { useIsDesktop } from "./useIsDesktop";
 
 export type View = "spin" | "history" | "board" | "settings";
@@ -35,6 +37,8 @@ function AppShell() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [onboardingSkipped, setOnboardingSkipped] = useState(false);
   const isDesktop = useIsDesktop();
+  // Subscribed up here, before any early return — hooks order is sacred.
+  const requestNav = useUnsaved((s) => s.requestNav);
 
   const stateQuery = useQuery({ queryKey: ["state"], queryFn: getState });
   const poolQuery = useQuery({
@@ -100,16 +104,24 @@ function AppShell() {
   const hasActivePool = state.pools[stream] != null;
   const currentPick = state.current_picks[stream];
 
+  // Every navigation that could unmount a dirty form goes through the
+  // unsaved guard (v1.12) — clean state passes straight through.
+  const guardedSetView = (v: View) => requestNav(() => setView(v));
+
   // Stream and player are game context, so touching them from History,
   // Board, or Settings also walks you back to the wheel — the top-bar
   // chips read as links, and links should go somewhere.
   function pickStream(s: Stream) {
-    setStream(s);
-    setView("spin");
+    requestNav(() => {
+      setStream(s);
+      setView("spin");
+    });
   }
   function pickPlayer(id: number) {
-    setPlayer(id);
-    setView("spin");
+    requestNav(() => {
+      setPlayer(id);
+      setView("spin");
+    });
   }
 
   return (
@@ -120,7 +132,7 @@ function AppShell() {
           stream={stream}
           setStream={pickStream}
           view={view}
-          setView={setView}
+          setView={guardedSetView}
           onOpenIdentity={() => setIdentityOpen(true)}
           updateAvailable={updateAvailable}
         />
@@ -206,22 +218,23 @@ function AppShell() {
 
       {!isDesktop && (
         <nav className="bottom-nav">
-          <NavButton active={view === "spin"} label={S.nav.spin} onClick={() => setView("spin")}>
+          <NavButton active={view === "spin"} label={S.nav.spin} onClick={() => guardedSetView("spin")}>
             <Disc3 size={20} aria-hidden="true" />
           </NavButton>
-          <NavButton active={view === "history"} label={S.nav.history} onClick={() => setView("history")}>
+          <NavButton active={view === "history"} label={S.nav.history} onClick={() => guardedSetView("history")}>
             <HistoryIcon size={20} aria-hidden="true" />
           </NavButton>
-          <NavButton active={view === "board"} label={S.nav.board} onClick={() => setView("board")}>
+          <NavButton active={view === "board"} label={S.nav.board} onClick={() => guardedSetView("board")}>
             <Trophy size={20} aria-hidden="true" />
           </NavButton>
-          <NavButton active={view === "settings"} label={S.nav.settings} onClick={() => setView("settings")}>
+          <NavButton active={view === "settings"} label={S.nav.settings} onClick={() => guardedSetView("settings")}>
             <SettingsIcon size={20} aria-hidden="true" />
             {updateAvailable && <span className="nav-dot" aria-hidden="true" />}
           </NavButton>
         </nav>
       )}
 
+      <UnsavedSheet />
       {identityOpen && (
         <IdentityGate
           players={state.players}

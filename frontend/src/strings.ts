@@ -259,6 +259,13 @@ export const S = {
       connections: "Connections",
     },
     pinRequired: "Enter the admin PIN to make changes.",
+    unsaved: {
+      title: "Unsaved changes",
+      body: "Your connection edits haven't been saved yet.",
+      save: "Save changes",
+      discard: "Discard",
+      stay: "Keep editing",
+    },
     pinIncorrect: "Wrong PIN.",
     pinCancelled: "PIN entry cancelled.",
     envLocked: "Set via environment variable — read-only here.",

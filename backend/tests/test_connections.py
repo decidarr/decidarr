@@ -77,7 +77,7 @@ def test_test_unconfigured_service_returns_clean_message(client):
     assert body["ok"] is False
     assert "rstrip" not in body["message"]
     assert "NoneType" not in body["message"]
-    assert "Not configured" in body["message"]
+    assert body["message"] == "Enter a URL and an API key first."
 
 
 def test_failed_test_is_ok_false_not_500(client, monkeypatch):
@@ -134,3 +134,67 @@ def test_overrides_unknown_keys_ignored(client):
     # falls through to the unconfigured path, not a 500/422
     assert r.status_code == 200
     assert r.json()["ok"] is False
+
+
+# --- v1.11.4: human test-failure copy -------------------------------------
+
+def test_missing_key_says_so_without_probing(client, monkeypatch):
+    """Tim's case: URL typed, no API key — say exactly that, and don't
+    fire a doomed request at the server."""
+    import importlib
+    jellyfin = importlib.import_module("media.jellyfin")
+    calls = []
+    monkeypatch.setattr(jellyfin, "make_client",
+                        lambda: calls.append(1) or None)
+    r = client.post("/api/connections/jellyfin/test", json={
+        "overrides": {"jellyfin_url": "http://jf:8096"}})
+    assert r.json() == {"ok": False, "message": "Enter an API key first."}
+    assert calls == []
+
+
+def test_unauthorized_maps_to_rejected_credential(client, monkeypatch):
+    import seerr
+    def handler(req):
+        return httpx.Response(401)
+    monkeypatch.setattr(seerr, "make_client", lambda: httpx.AsyncClient(
+        transport=httpx.MockTransport(handler), base_url="http://s:5055"))
+    r = client.post("/api/connections/seerr/test", json={
+        "overrides": {"seerr_url": "http://s:5055", "seerr_api_key": "bad"}})
+    body = r.json()
+    assert body["ok"] is False
+    assert body["message"] == "The API key was rejected — double-check it."
+
+
+def test_plex_unauthorized_names_the_token(client, monkeypatch):
+    from media import plex
+    def handler(req):
+        return httpx.Response(401)
+    monkeypatch.setattr(plex, "make_client", lambda: httpx.AsyncClient(
+        transport=httpx.MockTransport(handler), base_url="http://p:32400"))
+    r = client.post("/api/connections/plex/test", json={
+        "overrides": {"plex_url": "http://p:32400", "plex_token": "bad"}})
+    assert r.json()["message"] == "The token was rejected — double-check it."
+
+
+def test_unreachable_maps_to_friendly_copy(client, monkeypatch):
+    import seerr
+    def handler(req):
+        raise httpx.ConnectError("refused")
+    monkeypatch.setattr(seerr, "make_client", lambda: httpx.AsyncClient(
+        transport=httpx.MockTransport(handler), base_url="http://s:5055"))
+    r = client.post("/api/connections/seerr/test", json={
+        "overrides": {"seerr_url": "http://s:5055", "seerr_api_key": "k"}})
+    assert r.json()["message"] == \
+        "Couldn't reach that address — check the URL and that the service is running."
+
+
+def test_wrong_server_404_maps_to_friendly_copy(client, monkeypatch):
+    import seerr
+    def handler(req):
+        return httpx.Response(404)
+    monkeypatch.setattr(seerr, "make_client", lambda: httpx.AsyncClient(
+        transport=httpx.MockTransport(handler), base_url="http://s:5055"))
+    r = client.post("/api/connections/seerr/test", json={
+        "overrides": {"seerr_url": "http://s:5055", "seerr_api_key": "k"}})
+    assert r.json()["message"] == \
+        "Reached a server, but it doesn't look like Overseerr/Jellyseerr — check the URL."

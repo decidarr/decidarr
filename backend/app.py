@@ -21,7 +21,7 @@ import updates
 from media import get_backend
 from pools import custom as custom_pool, refresh as pool_refresh, tmdb as tmdb_pool
 
-VERSION = "1.11.3"
+VERSION = "1.11.4"
 
 
 async def _daily_refresh():
@@ -718,6 +718,48 @@ class TestIn(BaseModel):
     overrides: dict[str, str] = {}
 
 
+# What each service's Test needs filled in, plus the human name used in
+# failure copy (v1.11.4 — a raw httpx 401 blurb told Tim nothing).
+TEST_REQUIRED = {
+    "seerr": ("Overseerr/Jellyseerr", ["seerr_url", "seerr_api_key"]),
+    "radarr": ("Radarr", ["radarr_url", "radarr_api_key"]),
+    "sonarr": ("Sonarr", ["sonarr_url", "sonarr_api_key"]),
+    "tmdb": ("TMDB", ["tmdb_api_key"]),
+    "trakt": ("Trakt", ["trakt_client_id"]),
+    "plex": ("Plex", ["plex_url", "plex_token"]),
+    "jellyfin": ("Jellyfin", ["jellyfin_url", "jellyfin_api_key"]),
+}
+
+_FIELD_PHRASE = {"_url": "a URL", "_token": "a token",
+                 "_client_id": "a client ID", "_api_key": "an API key"}
+
+
+def _field_phrase(key: str) -> str:
+    for suffix, phrase in _FIELD_PHRASE.items():
+        if key.endswith(suffix):
+            return phrase
+    return "a value"
+
+
+def _friendly_test_error(service: str, exc: Exception) -> str:
+    name, keys = TEST_REQUIRED[service]
+    if isinstance(exc, httpx.HTTPStatusError):
+        code = exc.response.status_code
+        if code in (401, 403):
+            # name the credential this service actually uses
+            secret = next((k for k in keys if not k.endswith("_url")), None)
+            noun = _field_phrase(secret).split(" ", 1)[1] if secret else "credential"
+            return f"The {noun} was rejected — double-check it."
+        if code == 404:
+            return f"Reached a server, but it doesn't look like {name} — check the URL."
+        return f"The server answered HTTP {code} — check the URL points at {name}."
+    if isinstance(exc, httpx.TimeoutException):
+        return "Timed out — the address may be wrong or the service busy."
+    if isinstance(exc, httpx.HTTPError):
+        return "Couldn't reach that address — check the URL and that the service is running."
+    return str(exc)
+
+
 @api.post("/api/connections/{service}/test",
           dependencies=[Depends(require_admin)])
 async def test_connection(service: str, body: TestIn | None = None):
@@ -726,8 +768,14 @@ async def test_connection(service: str, body: TestIn | None = None):
         raise HTTPException(404, "unknown_service")
     mod_name, path = TEST_PROBES[service]
     mod = importlib.import_module(mod_name)
-    try:
-        with config.overriding(body.overrides if body else {}):
+    with config.overriding(body.overrides if body else {}):
+        # Field-aware pre-check: "Enter an API key first." beats firing a
+        # doomed request and echoing its 401.
+        missing = [k for k in TEST_REQUIRED[service][1] if not config.resolve(k)]
+        if missing:
+            phrases = " and ".join(_field_phrase(k) for k in missing)
+            return {"ok": False, "message": f"Enter {phrases} first."}
+        try:
             async with mod.make_client() as c:
                 r = await c.get(path)
                 r.raise_for_status()
@@ -736,8 +784,8 @@ async def test_connection(service: str, body: TestIn | None = None):
                         .get("machineIdentifier")
                     if machine:
                         config.set_setting("plex_machine_id", machine)
-    except Exception as e:
-        return {"ok": False, "message": str(e)}
+        except Exception as e:
+            return {"ok": False, "message": _friendly_test_error(service, e)}
     return {"ok": True, "message": "Connection successful"}
 
 

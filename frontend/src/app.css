@@ -2056,6 +2056,7 @@ button {
   border-radius: 0;
   min-height: 38px;
   padding: var(--s1) 0;
+  flex-wrap: wrap; /* long player name + mapping input at 390px */
 }
 
 .settings-view .settings-list__row:last-child {

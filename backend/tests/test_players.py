@@ -56,3 +56,17 @@ def test_patch_player_404_and_admin_gate(client):
                         json={"plex_user": "x"}).status_code == 401
     assert client.patch(f"/api/players/{pid}", json={"plex_user": "x"},
                         headers={"X-Admin-Pin": "1234"}).status_code == 200
+
+
+def test_patch_one_mapping_preserves_the_other(client):
+    """exclude_unset guard: an omitted field must survive a PATCH even when
+    it holds a real value — a regression to full model_dump would silently
+    null the other mapping (data loss)."""
+    pid = client.post("/api/players", json={"name": "Tim"}).json()["id"]
+    client.patch(f"/api/players/{pid}",
+                 json={"plex_user": "tjwb", "jellyfin_user": "tim_jf"})
+    r = client.patch(f"/api/players/{pid}", json={"plex_user": "tjwb2"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["plex_user"] == "tjwb2"
+    assert body["jellyfin_user"] == "tim_jf"

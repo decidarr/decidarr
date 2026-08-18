@@ -438,7 +438,7 @@ function IdleHero({ pool, seen, poolName, hasActivePool, pickKey }: {
       <p className="idle-hero__invite">{S.hero.invite}</p>
       <p className="idle-hero__count">
         {hasActivePool
-          ? heroCountLine(n, stream, filtersActive)
+          ? heroCountLine(n, stream, filtersActive, filters.includeSeen)
           : S.emptyWheel.noPool}
       </p>
     </div>

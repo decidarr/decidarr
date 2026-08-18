@@ -138,6 +138,8 @@ async def recent_watches(client, since):
                 if not sid:
                     continue
                 if sid not in series_cache:
+                    # Failures are memoized as None — a broken series must
+                    # cost one lookup per batch, not one per episode.
                     try:
                         s = await client.get(
                             f"/Users/{uid}/Items",
@@ -146,11 +148,11 @@ async def recent_watches(client, since):
                         s.raise_for_status()
                         hits = s.json().get("Items") or []
                     except (httpx.HTTPError, ValueError):
-                        continue  # bad series lookup — skip this episode, keep the batch
-                    if not hits:
-                        continue
-                    series_cache[sid] = hits[0]
+                        hits = []
+                    series_cache[sid] = hits[0] if hits else None
                 show = series_cache[sid]
+                if show is None:
+                    continue  # bad series lookup — skip its episodes, keep the batch
                 out.append({"account": uname, "media_type": "tv",
                             "tmdb_id": _tmdb_from_provider_ids(show),
                             "title": show.get("Name") or "",

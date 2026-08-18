@@ -282,6 +282,14 @@ describe("heroCountLine", () => {
     expect(heroCountLine(0, "movie", true))
       .toBe("Choosing from 0 unseen films that fit your filters.");
   });
+  it("drops 'unseen' when seen titles are included", () => {
+    expect(heroCountLine(214, "movie", false, true))
+      .toBe("Choosing from 214 films.");
+    expect(heroCountLine(3, "movie", true, true))
+      .toBe("Choosing from 3 films that fit your filters.");
+    expect(heroCountLine(1, "tv", false, true))
+      .toBe("Choosing from 1 show.");
+  });
 });
 
 describe("heroReadyLine", () => {

@@ -395,3 +395,43 @@ def test_watched_keys_isolates_section_failures(db_file):
 def test_watched_keys_unreachable_returns_none(db_file):
     routes = {"/library/sections": httpx.ConnectError("down")}
     assert asyncio.run(plex.watched_keys(_watched_client(routes))) is None
+
+
+# --- v1.11.2 hygiene: malformed-but-200 bodies must degrade, not raise ----
+
+def test_plex_availability_survives_non_object_json(db_file):
+    v, conf, key = asyncio.run(
+        plex.availability(_plex_client(None), ITEM, "movie"))
+    assert (v, conf, key) == ("unknown", "none", None)
+
+
+def test_jellyfin_recent_watches_survives_non_list_json(db_file):
+    def handler(req):
+        return httpx.Response(200, json=None)  # valid JSON, wrong shape
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler),
+                               base_url="http://jf:8096")
+    assert asyncio.run(jellyfin.recent_watches(client, "2026-01-01")) == []
+
+
+def test_jellyfin_failed_series_lookup_is_memoized(db_file):
+    """Two episodes of the same broken series must cost ONE lookup, not two."""
+    series_calls = []
+
+    def handler(req):
+        if req.url.path == "/Users":
+            return httpx.Response(200, json=[{"Id": "u1", "Name": "Tim"}])
+        if "Ids" in dict(req.url.params):
+            series_calls.append(dict(req.url.params)["Ids"])
+            return httpx.Response(500)
+        return httpx.Response(200, json={"Items": [
+            {"Type": "Episode", "SeriesId": "s1",
+             "UserData": {"LastPlayedDate": "2026-08-01T00:00:00Z"}},
+            {"Type": "Episode", "SeriesId": "s1",
+             "UserData": {"LastPlayedDate": "2026-08-02T00:00:00Z"}},
+        ]})
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler),
+                               base_url="http://jf:8096")
+    out = asyncio.run(jellyfin.recent_watches(client, "2026-01-01"))
+    assert out == []
+    assert series_calls == ["s1"]

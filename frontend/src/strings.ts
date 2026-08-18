@@ -74,6 +74,9 @@ export const S = {
     counting: (n: number, noun: string) => `Choosing from ${n} unseen ${noun}.`,
     countingFiltered: (n: number, noun: string) =>
       `Choosing from ${n} unseen ${noun} that fit your filters.`,
+    countingAll: (n: number, noun: string) => `Choosing from ${n} ${noun}.`,
+    countingAllFiltered: (n: number, noun: string) =>
+      `Choosing from ${n} ${noun} that fit your filters.`,
     ready: (n: number) => `Another ${n} in the wheel.`,
     readyOne: "One more in the wheel.",
     readyNone: "Nothing else in the wheel right now.",

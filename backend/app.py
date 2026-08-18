@@ -21,7 +21,7 @@ import updates
 from media import get_backend
 from pools import custom as custom_pool, refresh as pool_refresh, tmdb as tmdb_pool
 
-VERSION = "1.11.1"
+VERSION = "1.11.2"
 
 
 async def _daily_refresh():
@@ -649,6 +649,9 @@ async def backfill_seen(body: BackfillSeenIn):
             by_title[(r["media_type"], db.normalize(r["title"]),
                       r["year"])] = entry
         seen = {mt: db.seen_keys(conn, mt) for mt in ("movie", "tv")}
+        # keys marked THIS run: their duplicate plays collapse silently
+        # instead of inflating "already seen, skipped" (v1.11.2 hygiene).
+        run_marked = {"movie": set(), "tv": set()}
         for play in plays:
             mt = play["media_type"]
             entry = None
@@ -661,11 +664,13 @@ async def backfill_seen(body: BackfillSeenIn):
                 continue                      # not in the wheel's world
             key, title, year = entry
             if key in seen[mt]:
-                skipped += 1
+                if key not in run_marked[mt]:
+                    skipped += 1
                 continue
             db.log_event(conn, body.player, mt, key, title, year, "seen",
                          source="auto")
             seen[mt].add(key)                 # also dedupes within this run
+            run_marked[mt].add(key)
             marked[mt] += 1
         conn.commit()
     return {"ok": True, "marked_movies": marked["movie"],

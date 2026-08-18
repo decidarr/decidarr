@@ -186,3 +186,24 @@ def test_backfill_marks_tv_shows(client, monkeypatch):
     assert body["marked_movies"] == 0
     with db.get_conn() as conn:
         assert db.seen_keys(conn, "tv") == {"tmdb:1396"}
+
+
+def test_backfill_intra_run_duplicate_neither_marks_twice_nor_skips(client, monkeypatch):
+    """Two library entries resolving to the same pool title in ONE run:
+    marked once, and the duplicate is collapsed silently — it isn't
+    'already seen' in the sense the toast means (v1.11.2 hygiene)."""
+    _seed_pool("movie", [(391713, "Lady Bird", 2017)])
+    routes = {
+        # longest prefix FIRST — _plex_env matches in dict order
+        "/library/sections/1/all": {"MediaContainer": {"Metadata": [
+            {"title": "Lady Bird", "year": 2017, "viewCount": 1,
+             "Guid": [{"id": "tmdb://391713"}]},
+            {"title": "Lady Bird!", "year": 2017, "viewCount": 2},  # same film, title-matched
+        ]}},
+        "/library/sections": ROUTES["/library/sections"],
+    }
+    _plex_env(monkeypatch, routes)
+    client.post("/api/players", json={"name": "Tim"})
+    body = client.post("/api/backfill-seen", json={"player": 1}).json()
+    assert body["marked_movies"] == 1
+    assert body["skipped_seen"] == 0

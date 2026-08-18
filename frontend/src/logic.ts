@@ -249,10 +249,15 @@ export function formatWhen(ts: string): string {
  * comes from the same eligibleItems() call Spin draws from, so it can never
  * disagree with what Spin does. */
 export function heroCountLine(
-  n: number, stream: Stream, filtersActive: boolean,
+  n: number, stream: Stream, filtersActive: boolean, includeSeen = false,
 ): string {
   const [one, many] = S.hero.nouns[stream];
   const noun = n === 1 ? one : many;
+  // With include-seen on, "unseen" would be a lie — the count isn't.
+  if (includeSeen) {
+    return filtersActive ? S.hero.countingAllFiltered(n, noun)
+                         : S.hero.countingAll(n, noun);
+  }
   return filtersActive ? S.hero.countingFiltered(n, noun)
                        : S.hero.counting(n, noun);
 }

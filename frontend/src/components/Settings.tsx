@@ -47,6 +47,8 @@ export function PlayersSection() {
     const current = (server === "plex" ? p.plex_user : p.jellyfin_user) ?? null;
     if (!server || value === current) return;
     try {
+      // Computed key is safe: `server` is narrowed to "plex" | "jellyfin"
+      // above, so this always names a real PlayerPatch field.
       await withAdminPin(() => patchPlayer(p.id, {
         [server === "plex" ? "plex_user" : "jellyfin_user"]: value,
       }));

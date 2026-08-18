@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Disc3, History as HistoryIcon, Settings as SettingsIcon, Trophy } from "lucide-react";
 
-import { getPool, getState } from "./api";
+import { getPool, getState, getUpdate } from "./api";
 import { AdminPinPrompt } from "./components/AdminPin";
 import { Console } from "./components/Console";
 import { Header } from "./components/Header";
@@ -28,6 +28,10 @@ function AppShell() {
   const { playerId, stream, setPlayer, setStream } = useSession();
   const [view, setView] = useState<View>("spin");
   const [identityOpen, setIdentityOpen] = useState(false);
+  const updateQuery = useQuery({
+    queryKey: ["update"], queryFn: getUpdate, staleTime: 12 * 3600 * 1000,
+  });
+  const updateAvailable = !!updateQuery.data?.update_available;
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [onboardingSkipped, setOnboardingSkipped] = useState(false);
   const isDesktop = useIsDesktop();
@@ -118,6 +122,7 @@ function AppShell() {
           view={view}
           setView={setView}
           onOpenIdentity={() => setIdentityOpen(true)}
+          updateAvailable={updateAvailable}
         />
       ) : (
         <Header
@@ -212,6 +217,7 @@ function AppShell() {
           </NavButton>
           <NavButton active={view === "settings"} label={S.nav.settings} onClick={() => setView("settings")}>
             <SettingsIcon size={20} aria-hidden="true" />
+            {updateAvailable && <span className="nav-dot" aria-hidden="true" />}
           </NavButton>
         </nav>
       )}

@@ -8,7 +8,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   ApiError, activatePool, backfillSeen, createPlayer, createPool, deactivatePlayer,
-  deletePool, getConnections, getHealth, getPlexSections, getPoolItems, getState,
+  deletePool, getConnections, getHealth, getPlexSections, getPoolItems, getState, getUpdate,
   importPool, listPlayers, listPools, patchPlayer, postEvent, putConnections,
   refreshPool, renamePool, testConnection,
 } from "../api";
@@ -183,6 +183,40 @@ export function AutologSection() {
         {S.settings.autolog.title}
       </label>
     </section>
+  );
+}
+
+/** The update phone-home's off switch (v1.10). Same env-first contract as
+ * every other setting: env-set means the toggle is read-only here. */
+function UpdateCheckCard({ data, onChanged }: {
+  data: ConnectionsBundle | undefined;
+  onChanged: () => void;
+}) {
+  const raw = data?.update_check?.value ?? null;
+  const on = raw === null || !AUTOLOG_OFF_VALUES.has(raw.toLowerCase());
+  const envLocked = !!data?.update_check?.env;
+
+  async function toggle() {
+    try {
+      await withAdminPin(() => putConnections({ update_check: on ? "false" : "1" }));
+      onChanged();
+    } catch {
+      toast(S.common.writeFailed);
+    }
+  }
+
+  return (
+    <div className="connection-card">
+      <h4 className="connection-card__title">{S.settings.updateCheck.title}</h4>
+      <p className="connection-card__hint">{S.settings.updateCheck.caption}</p>
+      <label className="toggle-row">
+        <input type="checkbox" checked={on} disabled={envLocked} onChange={toggle} />
+        {S.settings.updateCheck.title}
+        {envLocked && (
+          <span className="connection-card__env-badge">{S.settings.envLocked}</span>
+        )}
+      </label>
+    </div>
   );
 }
 
@@ -813,6 +847,13 @@ export function ConnectionsSection() {
           queryClient.invalidateQueries({ queryKey: ["health"] });
         }}
       />
+      <UpdateCheckCard
+        data={data}
+        onChanged={() => {
+          queryClient.invalidateQueries({ queryKey: ["connections"] });
+          queryClient.invalidateQueries({ queryKey: ["update"] });
+        }}
+      />
     </section>
   );
 }
@@ -928,6 +969,10 @@ export function Settings() {
   const [section, setSection] = useState<SettingsSection>("players");
   const healthQuery = useQuery({ queryKey: ["health"], queryFn: getHealth });
   const version = healthQuery.data?.version;
+  const updateQuery = useQuery({
+    queryKey: ["update"], queryFn: getUpdate, staleTime: 12 * 3600 * 1000,
+  });
+  const update = updateQuery.data;
 
   return (
     <div className="settings-view">
@@ -949,7 +994,21 @@ export function Settings() {
             </li>
           ))}
         </ul>
-        {version && <p className="settings-rail__version">v{version}</p>}
+        {version && (
+          <p className="settings-rail__version">
+            v{version}
+            {update?.update_available && update.latest && (
+              <a
+                className="settings-rail__update"
+                href="https://github.com/decidarr/decidarr/releases"
+                target="_blank"
+                rel="noreferrer"
+              >
+                {S.settings.updateAvailable(update.latest)}
+              </a>
+            )}
+          </p>
+        )}
       </nav>
       <div className="settings-content">
         {section === "players" && <PlayersSection />}

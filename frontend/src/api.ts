@@ -13,6 +13,7 @@ import type {
   StatsBundle,
   StatusQuery,
   StatusResult,
+  UpdateResult,
   Stream,
   VetoIn,
   WatchIn,
@@ -115,6 +116,8 @@ export const backfillSeen = (player: number) =>
   });
 
 export const getHealth = () => call<HealthResult>("/health");
+
+export const getUpdate = () => call<UpdateResult>("/update");
 
 export const getStats = () => call<StatsBundle>("/stats");
 

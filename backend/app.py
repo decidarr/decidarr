@@ -17,10 +17,11 @@ import db
 import radarr
 import seerr
 import sonarr
+import updates
 from media import get_backend
 from pools import custom as custom_pool, refresh as pool_refresh, tmdb as tmdb_pool
 
-VERSION = "1.9.3"
+VERSION = "1.10.0"
 
 
 async def _daily_refresh():
@@ -117,6 +118,23 @@ def state():
             "grudges": db.grudges(conn),
         }
     return out
+
+
+@api.get("/api/update")
+async def update_status():
+    """Newer image published than the one running? Notification only —
+    a container can't replace its own image; the pull stays the
+    operator's move. Unknown/disabled/down all read as nulls, never 5xx."""
+    latest = await updates.latest_version()
+    if latest is None:
+        return {"current": VERSION, "latest": None, "update_available": None}
+    cur = updates.parse_version(VERSION)
+    new = updates.parse_version(latest)
+    return {
+        "current": VERSION,
+        "latest": latest,
+        "update_available": bool(cur and new and new > cur),
+    }
 
 
 @api.get("/api/stats")

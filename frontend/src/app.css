@@ -1923,6 +1923,33 @@ button {
   display: none;
 }
 
+/* update awareness (v1.10): quiet gold notices, never a nag */
+.settings-rail__update {
+  display: block;
+  margin-top: 2px;
+  color: var(--gold);
+  text-decoration: none;
+}
+
+.settings-rail__update:hover {
+  text-decoration: underline;
+}
+
+.top-bar__nav-item,
+.bottom-nav__item {
+  position: relative;
+}
+
+.nav-dot {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+
 .settings-content {
   display: flex;
   flex-direction: column;

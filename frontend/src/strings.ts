@@ -244,6 +244,11 @@ export const S = {
   // --- settings / admin ----------------------------------------------
   settings: {
     title: "Settings",
+    updateAvailable: (v: string) => `v${v} available`,
+    updateCheck: {
+      title: "Check for updates",
+      caption: "Once a day, Decidarr asks Docker Hub whether a newer image exists. It only ever tells you — pulling it stays your move.",
+    },
     nav: {
       players: "Players",
       pools: "Pools",

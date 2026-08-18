@@ -17,6 +17,7 @@ SETTING_ENV = {
     "trakt_client_id": "TRAKT_CLIENT_ID",
     "autolog_enabled": "AUTOLOG_ENABLED",
     "autolog_interval": "AUTOLOG_INTERVAL",
+    "update_check": "UPDATE_CHECK",
 }
 
 

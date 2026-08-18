@@ -23,6 +23,7 @@ export function TopBar({
   view,
   setView,
   onOpenIdentity,
+  updateAvailable = false,
 }: {
   player: Player | null;
   stream: Stream;
@@ -30,6 +31,7 @@ export function TopBar({
   view: View;
   setView: (v: View) => void;
   onOpenIdentity: () => void;
+  updateAvailable?: boolean;
 }) {
   return (
     <header className="top-bar">
@@ -86,6 +88,9 @@ export function TopBar({
           >
             {icon}
             <span>{label}</span>
+            {v === "settings" && updateAvailable && (
+              <span className="nav-dot" aria-hidden="true" />
+            )}
           </button>
         ))}
       </nav>

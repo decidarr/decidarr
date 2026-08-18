@@ -145,6 +145,14 @@ export interface HealthResult {
   pools: Record<Stream, boolean>;
 }
 
+/** Shape of GET /api/update — nulls mean the check is disabled, down,
+ * or unparseable (never an error state the UI must handle). */
+export interface UpdateResult {
+  current: string;
+  latest: string | null;
+  update_available: boolean | null;
+}
+
 /** Shape of GET /api/stats (per-player action counts + derived flavor
  * inputs; scoreboard consumes this). */
 export interface StatsBundle {
